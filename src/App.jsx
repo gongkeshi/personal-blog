@@ -1,121 +1,87 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState, useEffect } from 'react'
+import ReactMarkdown from 'react-markdown'
+import './index.css'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [activeTab, setActiveTab] = useState('home')
+  const [reportContent, setReportContent] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (activeTab === 'report' && !reportContent) {
+      setLoading(true)
+      fetch('/Task1_Report.md')
+        .then(res => res.text())
+        .then(text => {
+          setReportContent(text)
+          setLoading(false)
+        })
+        .catch(err => {
+          console.error('Failed to fetch report:', err)
+          setReportContent('Failed to load the report.')
+          setLoading(false)
+        })
+    }
+  }, [activeTab, reportContent])
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
+    <div className="app-container">
+      <header>
+        <h1 className="gradient-text">龚科市's Digital Garden</h1>
+        <p className="subtitle">Software Engineering & Remote Development (Student ID: ZY2557102)</p>
+      </header>
+
+      <nav>
+        <button 
+          className={`nav-button ${activeTab === 'home' ? 'active' : ''}`}
+          onClick={() => setActiveTab('home')}
         >
-          Count is {count}
+          Home
         </button>
-      </section>
+        <button 
+          className={`nav-button ${activeTab === 'report' ? 'active' : ''}`}
+          onClick={() => setActiveTab('report')}
+        >
+          Task 1 Report
+        </button>
+      </nav>
 
-      <div className="ticks"></div>
+      <main className="content-area">
+        {activeTab === 'home' && (
+          <div className="home-content markdown-body">
+            <h2>Welcome to my Personal Blog! 🚀</h2>
+            <p>
+              This static website is built using <strong>React</strong> and <strong>Vite</strong>. 
+              It serves as my digital portfolio for showcasing course assignments, thoughts, and technical reports.
+            </p>
+            <p>
+              I chose React as my "Advanced Framework" for this assignment to explore modern, component-driven web development. 
+              The design features a glassmorphism aesthetic with subtle animations to create a premium feel.
+            </p>
+            <h3>Features of this Blog:</h3>
+            <ul>
+              <li>⚡ Lightning fast loading with Vite</li>
+              <li>🎨 Modern Glassmorphism UI & Dynamic Gradients</li>
+              <li>📄 Seamless Markdown Rendering</li>
+              <li>📱 Responsive Design</li>
+            </ul>
+            <p>Feel free to navigate to the <strong>Task 1 Report</strong> tab to view my initial assignment.</p>
+          </div>
+        )}
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+        {activeTab === 'report' && (
+          <div className="report-content">
+            {loading ? (
+              <div className="loading">Loading report...</div>
+            ) : (
+              <div className="markdown-body">
+                <ReactMarkdown>{reportContent}</ReactMarkdown>
+              </div>
+            )}
+          </div>
+        )}
+      </main>
+    </div>
   )
 }
 
