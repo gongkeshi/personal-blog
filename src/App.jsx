@@ -4,26 +4,26 @@ import './index.css'
 
 function App() {
   const [activeTab, setActiveTab] = useState('home')
-  const [reportContent, setReportContent] = useState('')
+  const [report1Content, setReport1Content] = useState('')
+  const [report2Content, setReport2Content] = useState('')
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (activeTab === 'report' && !reportContent) {
+    if (activeTab === 'task1' && !report1Content) {
       setLoading(true)
-      // Use import.meta.env.BASE_URL to handle Github Pages subdirectory path correctly
       fetch(import.meta.env.BASE_URL + 'Task1_Report.md')
         .then(res => res.text())
-        .then(text => {
-          setReportContent(text)
-          setLoading(false)
-        })
-        .catch(err => {
-          console.error('Failed to fetch report:', err)
-          setReportContent('Failed to load the report.')
-          setLoading(false)
-        })
+        .then(text => { setReport1Content(text); setLoading(false) })
+        .catch(err => { setReport1Content('Failed to load the report.'); setLoading(false) })
     }
-  }, [activeTab, reportContent])
+    if (activeTab === 'task2' && !report2Content) {
+      setLoading(true)
+      fetch(import.meta.env.BASE_URL + 'Task2_Website_Report.md')
+        .then(res => res.text())
+        .then(text => { setReport2Content(text); setLoading(false) })
+        .catch(err => { setReport2Content('Failed to load the report.'); setLoading(false) })
+    }
+  }, [activeTab, report1Content, report2Content])
 
   return (
     <div className="app-container">
@@ -37,46 +37,63 @@ function App() {
           className={`nav-button ${activeTab === 'home' ? 'active' : ''}`}
           onClick={() => setActiveTab('home')}
         >
-          Home
+          About Me
         </button>
         <button 
-          className={`nav-button ${activeTab === 'report' ? 'active' : ''}`}
-          onClick={() => setActiveTab('report')}
+          className={`nav-button ${activeTab === 'task1' ? 'active' : ''}`}
+          onClick={() => setActiveTab('task1')}
         >
           Task 1 Report
+        </button>
+        <button 
+          className={`nav-button ${activeTab === 'task2' ? 'active' : ''}`}
+          onClick={() => setActiveTab('task2')}
+        >
+          Task 2 Report
         </button>
       </nav>
 
       <main className="content-area">
         {activeTab === 'home' && (
           <div className="home-content markdown-body">
-            <h2>Welcome to my Personal Blog! 🚀</h2>
+            <h2>About Me 👨‍💻</h2>
             <p>
-              This static website is built using <strong>React</strong> and <strong>Vite</strong>. 
-              It serves as my digital portfolio for showcasing course assignments, thoughts, and technical reports.
+              Hello! I am <strong>龚科市</strong> (Student ID: ZY2557102), a student exploring the realms of Software Engineering and Remote Development.
             </p>
             <p>
-              I chose React as my "Advanced Framework" for this assignment to explore modern, component-driven web development. 
-              The design features a glassmorphism aesthetic with subtle animations to create a premium feel.
+              This static website serves as my digital portfolio for showcasing course assignments, thoughts, and technical reports. 
+              Instead of using standard generators like Sphinx, I decided to challenge myself by building this site entirely from scratch using modern web technologies to achieve the <strong>Advanced Framework Bonus</strong>.
             </p>
-            <h3>Features of this Blog:</h3>
+            <h3>Tools & Technologies Used:</h3>
             <ul>
-              <li>⚡ Lightning fast loading with Vite</li>
-              <li>🎨 Modern Glassmorphism UI & Dynamic Gradients</li>
-              <li>📄 Seamless Markdown Rendering</li>
-              <li>📱 Responsive Design</li>
+              <li>⚡ <strong>Vite</strong> - For blazing fast local development and optimized static builds.</li>
+              <li>⚛️ <strong>React</strong> - To create a highly interactive, component-driven UI.</li>
+              <li>🎨 <strong>Vanilla CSS</strong> - Utilizing CSS Variables to create a beautiful, modern Light Icy Glassmorphism theme.</li>
+              <li>📄 <strong>react-markdown</strong> - To natively fetch and render my assignment Markdown reports dynamically in the browser.</li>
             </ul>
-            <p>Feel free to navigate to the <strong>Task 1 Report</strong> tab to view my initial assignment.</p>
+            <p>Feel free to navigate through the tabs above to view my detailed technical reports for Assignment 1 and Assignment 2!</p>
           </div>
         )}
 
-        {activeTab === 'report' && (
+        {activeTab === 'task1' && (
           <div className="report-content">
             {loading ? (
               <div className="loading">Loading report...</div>
             ) : (
               <div className="markdown-body">
-                <ReactMarkdown>{reportContent}</ReactMarkdown>
+                <ReactMarkdown>{report1Content}</ReactMarkdown>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'task2' && (
+          <div className="report-content">
+            {loading ? (
+              <div className="loading">Loading report...</div>
+            ) : (
+              <div className="markdown-body">
+                <ReactMarkdown>{report2Content}</ReactMarkdown>
               </div>
             )}
           </div>
