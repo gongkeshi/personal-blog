@@ -10,7 +10,8 @@ function App() {
   useEffect(() => {
     if (activeTab === 'report' && !reportContent) {
       setLoading(true)
-      fetch('/Task1_Report.md')
+      // Use import.meta.env.BASE_URL to handle Github Pages subdirectory path correctly
+      fetch(import.meta.env.BASE_URL + 'Task1_Report.md')
         .then(res => res.text())
         .then(text => {
           setReportContent(text)
