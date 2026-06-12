@@ -21,68 +21,102 @@ const INITIAL_SKILL_LEVELS = {
   qe: 1,
   space: 1,
 }
-const ASSISTANT_IDLE_TEXT = '我是器灵助手，可以自由问技能、连招、升阶、保命、守灵脉和当前冷却。'
-const ASSISTANT_API_IDLE_TEXT = 'DeepSeek API：请先填入代理地址，或部署仓库里的 api/deepseek-skill-agent.js。'
-const ICE_ASSISTANT_QUESTIONS = ['人剑合一怎么用？', '冰修怎么连招？', 'Q+E领域怎么放？', '怎么升阶？']
-const FIRE_ASSISTANT_QUESTIONS = ['火修怎么连招？', '大招怎么用？', 'R技能有什么用？', '怎么升阶？']
+const ASSISTANT_IDLE_TEXT = '我是器灵助手 / Spirit Assistant：可以自由问技能、连招、升阶、保命、守灵脉和当前冷却。'
+const ASSISTANT_API_IDLE_TEXT = 'DeepSeek API：请先填入代理地址 / Add a proxy endpoint, or deploy api/deepseek-skill-agent.js.'
+const ICE_ASSISTANT_QUESTIONS = [
+  '人剑合一怎么用？ / How do I use Sword Unity?',
+  '冰修怎么连招？ / What is the ice combo?',
+  'Q+E领域怎么放？ / How do I cast the domain?',
+  '怎么升阶？ / How do upgrades work?',
+]
+const FIRE_ASSISTANT_QUESTIONS = [
+  '火修怎么连招？ / What is the fire combo?',
+  '大招怎么用？ / How should I use the ultimate?',
+  'R技能有什么用？ / What does R do?',
+  '怎么升阶？ / How do upgrades work?',
+]
 const SKILL_DETAILS = {
   bing: {
     q: {
       keyLabel: 'Q',
       name: '半月霜波',
+      enName: 'Crescent Frost Wave',
       tiers: ['单道半月波，命中减速', '双月交错，范围更宽', '五重冰月，巨幅减速并短冻'],
+      tiersEn: ['Single crescent wave that slows enemies', 'Twin crossed waves with a wider reach', 'Five frost moons with heavy slow and brief freeze'],
     },
     e: {
       keyLabel: 'E',
       name: '万剑归宗',
+      enName: 'Ten Thousand Swords',
       tiers: ['一圈剑阵清场', '双层剑阵，高穿透', '三重剑暴，雷光满屏'],
+      tiersEn: ['A sword ring for clearing nearby enemies', 'Double sword rings with high pierce', 'Triple sword storm with lightning trails'],
     },
     g: {
       keyLabel: 'G',
       name: '人剑合一',
+      enName: 'Sword Unity',
       tiers: ['化身飞剑 5 秒', '剑形更快，剑气更强', '天剑合一，飞剑留下寒霜剑痕'],
+      tiersEn: ['Become a flying sword for 5 seconds', 'Faster sword form with stronger sword aura', 'Heaven sword form leaves frost slash trails'],
     },
     r: {
       keyLabel: 'R',
       name: '冰影分身',
+      enName: 'Frost Shadow Clones',
       tiers: ['两个分身齐射', '三个分身更久更快', '六影同屏，弹幕压制'],
+      tiersEn: ['Two clones fire together', 'Three faster clones last longer', 'Six shadows fill the screen with pressure fire'],
     },
     f: {
       keyLabel: 'F',
       name: '玄冰封界',
+      enName: 'Profound Ice Seal',
       tiers: ['全场直接冰封 2 秒', '冰封更久', '极寒冰封，再按 F 引爆冻结目标'],
+      tiersEn: ['Instantly freezes the field for 2 seconds', 'Longer full-field freeze', 'Press F again to detonate frozen targets'],
     },
     qe: {
       keyLabel: 'Q+E',
       name: '冰魄领域',
+      enName: 'Frost Soul Domain',
       tiers: ['脚下展开冰纹法阵', '更大领域，冰符旋转', '极寒大阵，强控高伤害'],
+      tiersEn: ['Open an ice sigil field under your feet', 'Larger domain with rotating frost runes', 'Extreme frost array with heavy control and damage'],
     },
     space: {
       keyLabel: '空格',
+      keyLabelEn: 'Space',
       name: '九霄天雷',
+      enName: 'Nine Heavens Thunder',
       tiers: ['全场落雷，直接打击所有敌人', '连锁雷暴，伤害更高', '天劫雷海，多段重击清场'],
+      tiersEn: ['Lightning strikes every enemy on the field', 'Chain thunderstorm with higher damage', 'Heavenly thunder sea hits in multiple waves'],
     },
   },
   huo: {
     q: {
       keyLabel: 'Q',
       name: '陨炎大火球',
+      enName: 'Meteor Fireball',
       tiers: ['一颗大火球，爆炸溅射', '双火球连爆', '三颗陨火巨爆，清屏压制'],
+      tiersEn: ['One large fireball with splash explosion', 'Two fireballs with chained blasts', 'Three meteor fireballs for huge screen pressure'],
     },
     e: {
       keyLabel: 'E',
       name: '赤焰光束',
+      enName: 'Scarlet Flame Beam',
       tiers: ['直线火焰光束', '更宽更久的灼烧光束', '双重贯穿光束，持续融化'],
+      tiersEn: ['Straight flame beam', 'Wider and longer burning beam', 'Twin piercing beams that melt enemies'],
     },
     r: {
       keyLabel: 'R',
       name: '护体炎星',
+      enName: 'Orbiting Flame Stars',
       tiers: ['三颗火球环绕护体', '五颗火球持续灼烧', '九颗巨焰环绕，贴身粉碎'],
+      tiersEn: ['Three orbiting fireballs protect you', 'Five fireballs keep burning nearby enemies', 'Nine giant flames crush close targets'],
     },
     space: {
       keyLabel: '空格',
+      keyLabelEn: 'Space',
       name: '焚天蓄炎',
+      enName: 'Heaven-Burning Charge',
       tiers: ['蓄力后释放超大火球', '更大的爆裂炎核', '太阳般巨型火球，超大爆炸'],
+      tiersEn: ['Charge, then release a huge fireball', 'Larger explosive flame core', 'Sun-sized fireball with massive explosion'],
     },
   },
 }
@@ -106,10 +140,15 @@ const ROLES = {
   bing: {
     id: 'bing',
     name: '冰修',
+    nameEn: 'Ice Cultivator',
     title: '寒霜分影',
+    titleEn: 'Frost Shadow Adept',
     trait: '控场型修士，G 键人剑合一化身飞剑 5 秒，Q+E 原地展开冰魄领域。',
+    traitEn: 'A control-focused cultivator. Press G to become a flying sword for 5 seconds, and Q+E to open a frost domain in place.',
     attack: '冰棱术',
+    attackEn: 'Ice Shard Art',
     skill: '寒霜七式',
+    skillEn: 'Seven Frost Arts',
     hp: 145,
     speed: 225,
     damageTaken: 0.82,
@@ -117,22 +156,27 @@ const ROLES = {
     color: '#0284c7',
     accent: '#bae6fd',
     skills: {
-      q: { name: '半月霜波', cooldown: 2.2 },
-      e: { name: '万剑归宗', cooldown: 5.5 },
-      g: { name: '人剑合一', cooldown: 6.8 },
-      r: { name: '冰影分身', cooldown: 7.8 },
-      f: { name: '玄冰封界', cooldown: 8.2 },
-      qe: { name: '冰魄领域', cooldown: 12.5 },
-      space: { name: '九霄天雷', cooldown: 9.8 },
+      q: { name: '半月霜波', nameEn: 'Crescent Frost Wave', cooldown: 2.2 },
+      e: { name: '万剑归宗', nameEn: 'Ten Thousand Swords', cooldown: 5.5 },
+      g: { name: '人剑合一', nameEn: 'Sword Unity', cooldown: 6.8 },
+      r: { name: '冰影分身', nameEn: 'Frost Shadow Clones', cooldown: 7.8 },
+      f: { name: '玄冰封界', nameEn: 'Profound Ice Seal', cooldown: 8.2 },
+      qe: { name: '冰魄领域', nameEn: 'Frost Soul Domain', cooldown: 12.5 },
+      space: { name: '九霄天雷', nameEn: 'Nine Heavens Thunder', cooldown: 9.8 },
     },
   },
   huo: {
     id: 'huo',
     name: '火修',
+    nameEn: 'Fire Cultivator',
     title: '地火焚天',
+    titleEn: 'Earthfire Adept',
     trait: '爆发型修士，大火球、光束、环绕火球与蓄力巨焰轮番清场。',
+    traitEn: 'A burst-damage cultivator who clears waves with fireballs, beams, orbiting flames, and a charged mega fireball.',
     attack: '火球术',
+    attackEn: 'Fireball Art',
     skill: '炎火四式',
+    skillEn: 'Four Flame Arts',
     hp: 105,
     speed: 245,
     damageTaken: 1,
@@ -140,10 +184,10 @@ const ROLES = {
     color: '#dc2626',
     accent: '#fdba74',
     skills: {
-      q: { name: '陨炎大火球', cooldown: 2.4 },
-      e: { name: '赤焰光束', cooldown: 4.8 },
-      r: { name: '护体炎星', cooldown: 7.2 },
-      space: { name: '焚天蓄炎', cooldown: 11.5 },
+      q: { name: '陨炎大火球', nameEn: 'Meteor Fireball', cooldown: 2.4 },
+      e: { name: '赤焰光束', nameEn: 'Scarlet Flame Beam', cooldown: 4.8 },
+      r: { name: '护体炎星', nameEn: 'Orbiting Flame Stars', cooldown: 7.2 },
+      space: { name: '焚天蓄炎', nameEn: 'Heaven-Burning Charge', cooldown: 11.5 },
     },
   },
 }
@@ -151,6 +195,7 @@ const ROLES = {
 const ENEMY_TYPES = [
   {
     name: '妖兽',
+    nameEn: 'Demon Beast',
     color: '#7c3aed',
     hp: 34,
     speed: 58,
@@ -161,6 +206,7 @@ const ENEMY_TYPES = [
   },
   {
     name: '心魔',
+    nameEn: 'Inner Demon',
     color: '#db2777',
     hp: 24,
     speed: 94,
@@ -171,6 +217,7 @@ const ENEMY_TYPES = [
   },
   {
     name: '魔修',
+    nameEn: 'Dark Cultivator',
     color: '#0891b2',
     hp: 46,
     speed: 50,
@@ -181,6 +228,7 @@ const ENEMY_TYPES = [
   },
   {
     name: '天劫残影',
+    nameEn: 'Tribulation Shade',
     color: '#ca8a04',
     hp: 120,
     speed: 40,
@@ -223,11 +271,37 @@ function getRoleSkillKeys(role) {
   return role.skills.g ? ['q', 'e', 'g', 'r', 'f', 'qe', 'space'] : ['q', 'e', 'r', 'space']
 }
 
+function bilingualText(cn, en) {
+  return `${cn} / ${en}`
+}
+
+function getKeyLabel(detail, compact = false) {
+  if (compact && detail.keyLabelEn === 'Space') return 'Sp'
+  return detail.keyLabelEn ? bilingualText(detail.keyLabel, detail.keyLabelEn) : detail.keyLabel
+}
+
+function getSkillDisplayName(role, key) {
+  const skill = role.skills[key]
+  const detail = SKILL_DETAILS[role.id][key]
+  return bilingualText(skill.name, skill.nameEn || detail.enName)
+}
+
+function getTierDisplayText(detail, level, withDetonationHint = false) {
+  const cn = detail.tiers[level - 1]
+  const en = detail.tiersEn[level - 1]
+  const hint = withDetonationHint ? '；3阶解锁二段 / Tier 3 unlocks detonation' : ''
+  return `${cn} / ${en}${hint}`
+}
+
+function getReadyText(cooldown) {
+  return cooldown <= 0 ? bilingualText('就绪', 'Ready') : `${cooldown.toFixed(1)}s`
+}
+
 function getRoleSkillText(role) {
   const keys = getRoleSkillKeys(role)
-  const labels = keys.map(key => SKILL_DETAILS[role.id][key].keyLabel).join('/')
+  const labels = keys.map(key => getKeyLabel(SKILL_DETAILS[role.id][key], true)).join('/')
   const countText = keys.length === 7 ? '七式' : keys.length === 6 ? '六式' : keys.length === 5 ? '五式' : '四式'
-  return `技能：${labels}${countText}，每 200 分获得 1 个升阶点，最高 3 阶`
+  return `技能 / Skills：${labels} ${countText} / ${keys.length} Arts；每 200 分 1 点 / 1 point per 200 score；最高 3 阶 / Max Tier 3`
 }
 
 function isTextEntryTarget(target) {
@@ -286,9 +360,9 @@ function getSkillStatusText(role, stats) {
       const level = stats.skillLevels?.[key] || 1
       const cooldown = stats.skillCds?.[key] || 0
       const status = role.id === 'bing' && key === 'f' && stats.iceDetonationWindow > 0
-        ? '二段可引爆'
-        : cooldown <= 0 ? '就绪' : `${cooldown.toFixed(1)}s`
-      return `${detail.keyLabel}${role.skills[key].name}${level}阶/${status}`
+        ? bilingualText('二段可引爆', 'Detonate Ready')
+        : getReadyText(cooldown)
+      return `${getKeyLabel(detail, true)} ${role.skills[key].name} T${level}/${status}`
     })
     .join('；')
 }
@@ -1906,9 +1980,11 @@ function drawGame(ctx, game) {
   ctx.lineWidth = 5
   ctx.stroke()
   ctx.fillStyle = '#0f766e'
-  ctx.font = 'bold 18px sans-serif'
+  ctx.font = 'bold 16px sans-serif'
   ctx.textAlign = 'center'
-  ctx.fillText('灵脉', game.core.x, game.core.y + 6)
+  ctx.fillText('灵脉', game.core.x, game.core.y + 1)
+  ctx.font = 'bold 10px sans-serif'
+  ctx.fillText('Vein', game.core.x, game.core.y + 14)
 
   for (const lightning of game.lightnings) {
     drawLightning(ctx, lightning)
@@ -2151,37 +2227,39 @@ function drawGame(ctx, game) {
   ctx.globalAlpha = 1
 
   ctx.textAlign = 'left'
-  drawBar(ctx, 22, 20, 205, 22, game.core.hp / game.core.maxHp, '#2dd4bf', `灵脉 ${Math.ceil(game.core.hp)}/${game.core.maxHp}`)
-  drawBar(ctx, 22, 50, 205, 22, game.player.hp / game.player.maxHp, '#60a5fa', `角色 ${Math.ceil(game.player.hp)}/${game.player.maxHp}`)
+  drawBar(ctx, 22, 20, 225, 22, game.core.hp / game.core.maxHp, '#2dd4bf', `灵脉 Vein ${Math.ceil(game.core.hp)}/${game.core.maxHp}`)
+  drawBar(ctx, 22, 50, 225, 22, game.player.hp / game.player.maxHp, '#60a5fa', `角色 Hero ${Math.ceil(game.player.hp)}/${game.player.maxHp}`)
 
   const panelSkillKeys = getRoleSkillKeys(game.role)
   ctx.fillStyle = 'rgba(15, 23, 42, 0.7)'
-  ctx.fillRect(game.width - 226, 18, 204, game.role.skills ? 86 + panelSkillKeys.length * 16 : 84)
+  ctx.fillRect(game.width - 286, 18, 264, game.role.skills ? 108 + panelSkillKeys.length * 16 : 102)
   ctx.fillStyle = '#f8fafc'
   ctx.font = 'bold 15px sans-serif'
-  ctx.fillText(`${game.role.name} · ${game.role.attack}`, game.width - 210, 42)
+  ctx.fillText(`${game.role.name} / ${game.role.nameEn}`, game.width - 270, 40)
+  ctx.font = '12px sans-serif'
+  ctx.fillText(`${game.role.attack} / ${game.role.attackEn}`, game.width - 270, 58)
   ctx.font = '13px sans-serif'
-  ctx.fillText(`分数 ${Math.floor(game.score)}`, game.width - 210, 64)
-  ctx.fillText(`击破 ${game.kills}`, game.width - 210, 84)
+  ctx.fillText(`分数 Score ${Math.floor(game.score)}`, game.width - 270, 80)
+  ctx.fillText(`击破 Kills ${game.kills}`, game.width - 270, 100)
 
   if (game.role.skills) {
     const skillLines = panelSkillKeys.map(key => [
-      SKILL_DETAILS[game.role.id][key].keyLabel,
+      getKeyLabel(SKILL_DETAILS[game.role.id][key], true),
       game.role.skills[key].name,
       game.skillCds[key],
       getSkillLevel(game, key),
     ])
     skillLines.forEach(([key, name, cooldown, level], index) => {
       ctx.fillStyle = cooldown <= 0 ? '#bbf7d0' : '#fed7aa'
-      const readyText = game.role.id === 'bing' && key === 'F' && game.iceDetonationWindow > 0
-        ? '再按F引爆'
-        : cooldown <= 0 ? '就绪' : `${cooldown.toFixed(1)}s`
-      ctx.fillText(`${key} ${name} ${level}阶: ${readyText}`, game.width - 210, 104 + index * 16)
+      const readyText = game.role.id === 'bing' && name === '玄冰封界' && game.iceDetonationWindow > 0
+        ? 'F Burst'
+        : cooldown <= 0 ? 'Ready' : `${cooldown.toFixed(1)}s`
+      ctx.fillText(`${key} ${name} T${level}: ${readyText}`, game.width - 270, 124 + index * 16)
     })
   } else {
     const skillReady = game.skillCd <= 0
     ctx.fillStyle = skillReady ? '#bbf7d0' : '#fed7aa'
-    ctx.fillText(skillReady ? `${game.role.skill}: 可释放` : `${game.role.skill}: ${game.skillCd.toFixed(1)}s`, game.width - 210, 101)
+    ctx.fillText(skillReady ? `${game.role.skill} / Ready` : `${game.role.skill}: ${game.skillCd.toFixed(1)}s`, game.width - 270, 124)
   }
 
   if (game.paused) {
@@ -2191,9 +2269,9 @@ function drawGame(ctx, game) {
     ctx.fillStyle = '#f8fafc'
     ctx.textAlign = 'center'
     ctx.font = 'bold 34px sans-serif'
-    ctx.fillText('已暂停', game.width / 2, game.height / 2 - 14)
+    ctx.fillText('已暂停 / Paused', game.width / 2, game.height / 2 - 14)
     ctx.font = '18px sans-serif'
-    ctx.fillText('按 P 继续守护灵脉', game.width / 2, game.height / 2 + 24)
+    ctx.fillText('按 P 继续守护灵脉 / Press P to Resume', game.width / 2, game.height / 2 + 24)
     ctx.restore()
   }
 }
@@ -2229,7 +2307,7 @@ export default function SpiritVeinGame() {
     setStats(buildStats(game))
     setAssistantQuestion('')
     setAssistantAnswer(ASSISTANT_IDLE_TEXT)
-    setAssistantStatus(assistantEndpoint ? 'DeepSeek API：已配置代理地址' : ASSISTANT_API_IDLE_TEXT)
+    setAssistantStatus(assistantEndpoint ? 'DeepSeek API：已配置代理地址 / Proxy configured' : ASSISTANT_API_IDLE_TEXT)
     setPhase('playing')
   }
 
@@ -2240,7 +2318,7 @@ export default function SpiritVeinGame() {
     setStats(INITIAL_STATS)
     setAssistantQuestion('')
     setAssistantAnswer(ASSISTANT_IDLE_TEXT)
-    setAssistantStatus(assistantEndpoint ? 'DeepSeek API：已配置代理地址' : ASSISTANT_API_IDLE_TEXT)
+    setAssistantStatus(assistantEndpoint ? 'DeepSeek API：已配置代理地址 / Proxy configured' : ASSISTANT_API_IDLE_TEXT)
   }
 
   function restartGame() {
@@ -2255,15 +2333,15 @@ export default function SpiritVeinGame() {
 
     setAssistantQuestion(trimmedQuestion)
     setAssistantBusy(true)
-    setAssistantStatus('DeepSeek API：请求中...')
+    setAssistantStatus('DeepSeek API：请求中 / Requesting...')
 
     try {
       const answer = await requestDeepSeekAssistant(assistantEndpoint, trimmedQuestion, currentRole, stats)
       setAssistantAnswer(answer)
-      setAssistantStatus('DeepSeek API：真实接口已返回')
+      setAssistantStatus('DeepSeek API：真实接口已返回 / Real API response received')
     } catch (error) {
       setAssistantAnswer(answerSkillQuestion(trimmedQuestion, currentRole, stats))
-      setAssistantStatus(`${error.message}，已使用本地兜底回答`)
+      setAssistantStatus(`${error.message}，已使用本地兜底回答 / Using local fallback`)
     } finally {
       setAssistantBusy(false)
     }
@@ -2277,7 +2355,7 @@ export default function SpiritVeinGame() {
   function updateAssistantEndpoint(endpoint) {
     setAssistantEndpoint(endpoint)
     saveAssistantEndpoint(endpoint)
-    setAssistantStatus(endpoint.trim() ? 'DeepSeek API：已配置代理地址' : ASSISTANT_API_IDLE_TEXT)
+    setAssistantStatus(endpoint.trim() ? 'DeepSeek API：已配置代理地址 / Proxy configured' : ASSISTANT_API_IDLE_TEXT)
   }
 
   function syncStatsFromGame() {
@@ -2434,11 +2512,14 @@ export default function SpiritVeinGame() {
       <div className="game-heading">
         <div>
           <p className="game-kicker">Assignment 4 · Option A</p>
-          <h2>守护灵脉</h2>
-          <p>选择冰修或火修，守住地图底部的宗门灵脉，击退妖兽、心魔、魔修与天劫残影。</p>
+          <h2>守护灵脉 / Spirit Vein Defense</h2>
+          <p>
+            <span>选择冰修或火修，守住地图底部的宗门灵脉，击退妖兽、心魔、魔修与天劫残影。</span>
+            <span>Choose an ice or fire cultivator, defend the spirit vein at the bottom of the map, and defeat each incoming wave.</span>
+          </p>
         </div>
         <div className="game-score-card">
-          <span>分数</span>
+          <span>分数 / Score</span>
           <strong>{stats.score}</strong>
         </div>
       </div>
@@ -2448,11 +2529,14 @@ export default function SpiritVeinGame() {
           {Object.values(ROLES).map(role => (
             <button className="role-card" key={role.id} onClick={() => startGame(role.id)}>
               <span className="role-mark" style={{ background: role.color }} />
-              <span className="role-name">{role.name}</span>
-              <span className="role-title">{role.title}</span>
-              <span className="role-desc">{role.trait}</span>
+              <span className="role-name">{role.name} / {role.nameEn}</span>
+              <span className="role-title">{role.title} / {role.titleEn}</span>
+              <span className="role-desc">
+                <span>{role.trait}</span>
+                <span>{role.traitEn}</span>
+              </span>
               <span className="role-skill">
-                {role.skills ? getRoleSkillText(role) : `仙术：${role.skill}`}
+                {role.skills ? getRoleSkillText(role) : `仙术 / Spell：${role.skill} / ${role.skillEn}`}
               </span>
             </button>
           ))}
@@ -2463,35 +2547,35 @@ export default function SpiritVeinGame() {
         <>
           <div className="game-toolbar">
             <div>
-              <span>角色</span>
-              <strong>{currentRole.name}</strong>
+              <span>角色 / Role</span>
+              <strong>{currentRole.name} / {currentRole.nameEn}</strong>
             </div>
             <div>
-              <span>灵脉</span>
+              <span>灵脉 / Vein</span>
               <strong>{stats.coreHp}</strong>
             </div>
             <div>
-              <span>生命</span>
+              <span>生命 / HP</span>
               <strong>{stats.playerHp}</strong>
             </div>
             <div>
-              <span>击破</span>
+              <span>击破 / Kills</span>
               <strong>{stats.kills}</strong>
             </div>
             <div>
-              <span>时间</span>
+              <span>时间 / Time</span>
               <strong>{stats.time}s</strong>
             </div>
             <div>
-              <span>状态</span>
-              <strong>{stats.paused ? '暂停中' : '战斗中'}</strong>
+              <span>状态 / State</span>
+              <strong>{stats.paused ? bilingualText('暂停中', 'Paused') : bilingualText('战斗中', 'Fighting')}</strong>
             </div>
             <div>
-              <span>{currentRole.skills ? '大招' : '仙术'}</span>
+              <span>{currentRole.skills ? bilingualText('大招', 'Ultimate') : bilingualText('仙术', 'Spell')}</span>
               <strong>
                 {currentRole.skills
-                  ? stats.skillCds.space <= 0 ? '就绪' : `${stats.skillCds.space.toFixed(1)}s`
-                  : stats.skillCd <= 0 ? '就绪' : `${stats.skillCd.toFixed(1)}s`}
+                  ? getReadyText(stats.skillCds.space)
+                  : getReadyText(stats.skillCd)}
               </strong>
             </div>
           </div>
@@ -2499,8 +2583,8 @@ export default function SpiritVeinGame() {
           {currentRole.skills && (
             <>
               <div className="upgrade-summary">
-                <strong>升阶点 {stats.upgradePoints}</strong>
-                <span>每 200 分获得 1 点，下一个升阶点：{stats.nextUpgradeScore} 分</span>
+                <strong>升阶点 / Upgrade Points {stats.upgradePoints}</strong>
+                <span>每 200 分获得 1 点 / 1 point per 200 score；下一个 / Next：{stats.nextUpgradeScore}</span>
               </div>
               <div className="skill-strip">
                 {getRoleSkillKeys(currentRole).map(key => {
@@ -2508,20 +2592,18 @@ export default function SpiritVeinGame() {
                   const level = stats.skillLevels[key] || 1
                   const cooldown = stats.skillCds[key] || 0
                   const detonationReady = currentRole.id === 'bing' && key === 'f' && stats.iceDetonationWindow > 0
-                  const tierText = currentRole.id === 'bing' && key === 'f' && level < 3
-                    ? `${detail.tiers[level - 1]}（3阶解锁二段）`
-                    : detail.tiers[level - 1]
+                  const tierText = getTierDisplayText(detail, level, currentRole.id === 'bing' && key === 'f' && level < 3)
                   const canUpgrade = stats.upgradePoints > 0 && level < 3
 
                   return (
                     <div className={`skill-card ${currentRole.id}-skill tier-${level}`} key={key}>
                       <div>
-                        <strong>{detail.keyLabel} {detail.name}</strong>
-                        <span>{level} 阶 · {tierText}</span>
+                        <strong>{getKeyLabel(detail)} {getSkillDisplayName(currentRole, key)}</strong>
+                        <span>{level} 阶 / Tier {level} · {tierText}</span>
                       </div>
-                      <em>{detonationReady ? '二段待发' : cooldown <= 0 ? '就绪' : `${cooldown.toFixed(1)}s`}</em>
+                      <em>{detonationReady ? bilingualText('二段待发', 'Detonate Ready') : getReadyText(cooldown)}</em>
                       <button type="button" disabled={!canUpgrade} onClick={() => upgradeSkill(key)}>
-                        {level >= 3 ? '满阶' : '升阶'}
+                        {level >= 3 ? bilingualText('满阶', 'Max') : bilingualText('升阶', 'Upgrade')}
                       </button>
                     </div>
                   )
@@ -2529,8 +2611,8 @@ export default function SpiritVeinGame() {
               </div>
               <div className="assistant-panel">
                 <div className="assistant-copy">
-                  <span>器灵助手</span>
-                  <strong>问技能</strong>
+                  <span>器灵助手 / Spirit Assistant</span>
+                  <strong>问技能 / Ask Skills</strong>
                   <p>{assistantAnswer}</p>
                   <small>{assistantStatus}</small>
                 </div>
@@ -2538,11 +2620,11 @@ export default function SpiritVeinGame() {
                   <input
                     value={assistantQuestion}
                     onChange={event => setAssistantQuestion(event.target.value)}
-                    placeholder="随便问：被围住怎么办？先升哪个？E怎么用？"
-                    aria-label="向器灵助手询问技能"
+                    placeholder="随便问 / Ask anything: 被围住怎么办？ Which skill first? How does E work?"
+                    aria-label="向器灵助手询问技能 / Ask the spirit assistant"
                   />
                   <button type="submit" disabled={assistantBusy}>
-                    {assistantBusy ? '请求中' : '询问'}
+                    {assistantBusy ? bilingualText('请求中', 'Asking') : bilingualText('询问', 'Ask')}
                   </button>
                 </form>
                 <details className="assistant-api-settings">
@@ -2550,8 +2632,8 @@ export default function SpiritVeinGame() {
                   <input
                     value={assistantEndpoint}
                     onChange={event => updateAssistantEndpoint(event.target.value)}
-                    placeholder="代理地址，例如 https://your-site.vercel.app/api/deepseek-skill-agent"
-                    aria-label="DeepSeek代理地址"
+                    placeholder="代理地址 / Proxy endpoint, e.g. https://your-site.vercel.app/api/deepseek-skill-agent"
+                    aria-label="DeepSeek代理地址 / DeepSeek proxy endpoint"
                   />
                 </details>
                 <div className="assistant-quick">
@@ -2571,7 +2653,7 @@ export default function SpiritVeinGame() {
               width={GAME_WIDTH}
               height={GAME_HEIGHT}
               tabIndex={0}
-              aria-label="守护灵脉游戏战场"
+              aria-label="守护灵脉游戏战场 / Spirit Vein Defense battlefield"
               onPointerMove={updatePointer}
               onPointerDown={handlePointerDown}
               onPointerUp={handlePointerUp}
@@ -2581,33 +2663,33 @@ export default function SpiritVeinGame() {
 
             {phase === 'gameover' && (
               <div className="game-over-panel">
-                <p>灵脉失守</p>
-                <h3>最终分数 {stats.score}</h3>
+                <p>灵脉失守 / Spirit Vein Lost</p>
+                <h3>最终分数 / Final Score {stats.score}</h3>
                 <div className="game-over-actions">
-                  <button onClick={restartGame}>再战一局</button>
-                  <button onClick={returnToSelect}>重选角色</button>
+                  <button onClick={restartGame}>再战一局 / Retry</button>
+                  <button onClick={returnToSelect}>重选角色 / Reselect</button>
                 </div>
               </div>
             )}
           </div>
 
           <div className="control-strip">
-            <span>WASD / 方向键移动</span>
-            <span>鼠标左键施放普攻</span>
+            <span>WASD / 方向键移动 / Arrow Keys Move</span>
+            <span>鼠标左键施放普攻 / Left Click Basic Attack</span>
             <span>
               {currentRole.id === 'bing'
-                ? '冰修：Q 冰波 · E 剑阵 · G 人剑合一5秒 · Q+E 冰场 · R 分身 · F 冰封 · 空格天雷'
-                : '火修：Q 大火球 · E 光束 · R 环绕火球 · 空格蓄力火球'}
+                ? '冰修 / Ice：Q 冰波 Frost Wave · E 剑阵 Sword Array · G 人剑合一 Sword Unity · Q+E 冰场 Domain · R 分身 Clones · F 冰封 Freeze · 空格 Thunder'
+                : '火修 / Fire：Q 大火球 Fireball · E 光束 Beam · R 环绕火球 Orbitals · 空格 Charged Fireball'}
             </span>
-            <span>P 暂停 / 继续</span>
-            <span>鼠标右键释放 E 技能</span>
+            <span>P 暂停 / 继续 / Pause / Resume</span>
+            <span>鼠标右键释放 E 技能 / Right Click Cast E</span>
           </div>
 
-          <div className="enemy-strip" aria-label="敌人类型">
+          <div className="enemy-strip" aria-label="敌人类型 / Enemy types">
             {ENEMY_TYPES.map(enemy => (
               <span key={enemy.name}>
                 <i style={{ background: enemy.color }} />
-                {enemy.name}
+                {enemy.name} / {enemy.nameEn}
               </span>
             ))}
           </div>
