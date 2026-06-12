@@ -7,16 +7,21 @@ const INITIAL_SKILL_COOLDOWNS = {
   e: 0,
   r: 0,
   f: 0,
+  qe: 0,
   space: 0,
 }
-const SKILL_KEYS = ['q', 'e', 'r', 'f', 'space']
+const SKILL_KEYS = ['q', 'e', 'r', 'f', 'qe', 'space']
 const INITIAL_SKILL_LEVELS = {
   q: 1,
   e: 1,
   r: 1,
   f: 1,
+  qe: 1,
   space: 1,
 }
+const ASSISTANT_IDLE_TEXT = '我是器灵助手，可以问我技能键位、升阶、连招或当前冷却。'
+const ICE_ASSISTANT_QUESTIONS = ['冰修怎么连招？', 'F怎么二段爆炸？', 'Q+E领域怎么放？', '怎么升阶？']
+const FIRE_ASSISTANT_QUESTIONS = ['火修怎么连招？', '大招怎么用？', 'R技能有什么用？', '怎么升阶？']
 const SKILL_DETAILS = {
   bing: {
     q: {
@@ -37,7 +42,12 @@ const SKILL_DETAILS = {
     f: {
       keyLabel: 'F',
       name: '玄冰封界',
-      tiers: ['全场直接冰封 2 秒', '直接冰封更久', '极寒定身，长时间全场冰封'],
+      tiers: ['全场直接冰封 2 秒', '冰封更久', '极寒冰封，再按 F 引爆冻结目标'],
+    },
+    qe: {
+      keyLabel: 'Q+E',
+      name: '冰魄领域',
+      tiers: ['脚下展开冰纹法阵', '更大领域，冰符旋转', '极寒大阵，强控高伤害'],
     },
     space: {
       keyLabel: '空格',
@@ -80,6 +90,7 @@ const INITIAL_STATS = {
   skillLevels: INITIAL_SKILL_LEVELS,
   upgradePoints: 0,
   nextUpgradeScore: 200,
+  iceDetonationWindow: 0,
 }
 
 const ROLES = {
@@ -87,9 +98,9 @@ const ROLES = {
     id: 'bing',
     name: '冰修',
     title: '寒霜分影',
-    trait: '控场型修士，F 键冰封全场，空格召九霄天雷清场。',
+    trait: '控场型修士，F 键冰封全场，Q+E 原地展开冰魄领域。',
     attack: '冰棱术',
-    skill: '寒霜五式',
+    skill: '寒霜六式',
     hp: 145,
     speed: 225,
     damageTaken: 0.82,
@@ -101,6 +112,7 @@ const ROLES = {
       e: { name: '万剑归宗', cooldown: 5.5 },
       r: { name: '冰影分身', cooldown: 7.8 },
       f: { name: '玄冰封界', cooldown: 8.2 },
+      qe: { name: '冰魄领域', cooldown: 12.5 },
       space: { name: '九霄天雷', cooldown: 9.8 },
     },
   },
@@ -198,13 +210,13 @@ function distanceToSegment(point, start, end) {
 
 function getRoleSkillKeys(role) {
   if (!role?.skills) return []
-  return role.skills.f ? ['q', 'e', 'r', 'f', 'space'] : ['q', 'e', 'r', 'space']
+  return role.skills.qe ? ['q', 'e', 'r', 'f', 'qe', 'space'] : ['q', 'e', 'r', 'space']
 }
 
 function getRoleSkillText(role) {
   const keys = getRoleSkillKeys(role)
   const labels = keys.map(key => SKILL_DETAILS[role.id][key].keyLabel).join('/')
-  const countText = keys.length === 5 ? '五式' : '四式'
+  const countText = keys.length === 6 ? '六式' : keys.length === 5 ? '五式' : '四式'
   return `技能：${labels}${countText}，每 200 分获得 1 个升阶点，最高 3 阶`
 }
 
@@ -230,6 +242,66 @@ function getSkillCooldown(game, key) {
   return baseCooldown
 }
 
+function getSkillStatusText(role, stats) {
+  if (!role?.skills) return ''
+
+  return getRoleSkillKeys(role)
+    .map(key => {
+      const detail = SKILL_DETAILS[role.id][key]
+      const level = stats.skillLevels?.[key] || 1
+      const cooldown = stats.skillCds?.[key] || 0
+      const status = role.id === 'bing' && key === 'f' && stats.iceDetonationWindow > 0
+        ? '二段可引爆'
+        : cooldown <= 0 ? '就绪' : `${cooldown.toFixed(1)}s`
+      return `${detail.keyLabel}${role.skills[key].name}${level}阶/${status}`
+    })
+    .join('；')
+}
+
+function answerSkillQuestion(question, role, stats) {
+  if (!role?.skills) return ASSISTANT_IDLE_TEXT
+
+  const text = question.toLowerCase()
+  const statusText = getSkillStatusText(role, stats)
+
+  if (text.includes('升阶') || text.includes('升级') || text.includes('200') || text.includes('3阶') || text.includes('三阶')) {
+    return `每 200 分获得 1 个升阶点，技能最高 3 阶。3 阶效果会明显夸张：冰修有五重冰月、强领域、F二段引爆；火修有巨型火球和更强清场。当前可用升阶点：${stats.upgradePoints}。`
+  }
+
+  if (role.id === 'bing') {
+    if (text.includes('二段') || text.includes('爆') || text.includes('f')) {
+      return 'F 是玄冰封界：直接冰封全场。升到 3 阶后，冰封期间再按一次 F，会只引爆被冻结的目标，不是全图爆炸。'
+    }
+    if (text.includes('领域') || text.includes('冰场') || text.includes('q+e') || text.includes('qe')) {
+      return 'Q+E 会在自己脚下展开冰魄领域，适合站在灵脉前方控场。领域冷却更长，建议敌人压到底部时再放。'
+    }
+    if (text.includes('分身') || text.includes('r')) {
+      return 'R 是冰影分身：分身会朝鼠标方向持续射击。升阶后分身更多、更久，3阶会形成弹幕压制。'
+    }
+    if (text.includes('连招') || text.includes('怎么打') || text.includes('顺序')) {
+      return '冰修推荐连招：Q减速开路，敌人聚集后Q+E放领域，R补弹幕，危险时F全场冰封；F到3阶后冰封期间再按F点爆冻结目标。'
+    }
+    if (text.includes('冷却') || text.includes('cd') || text.includes('状态')) {
+      return `当前冰修技能状态：${statusText}。`
+    }
+    return `冰修技能：Q半月霜波减速，E万剑归宗清场，R冰影分身压制，F玄冰封界控场，Q+E冰魄领域守底线，空格九霄天雷全场打击。当前状态：${statusText}。`
+  }
+
+  if (text.includes('大招') || text.includes('空格') || text.includes('space')) {
+    return '火修大招是焚天蓄炎：按空格蓄力 1 秒后，朝鼠标方向释放超大火球。最好先把鼠标瞄向敌人密集方向。'
+  }
+  if (text.includes('r') || text.includes('环绕')) {
+    return 'R 是护体炎星：召唤环绕火球，适合敌人贴近时开。升到3阶后火球数量和体积都很夸张。'
+  }
+  if (text.includes('连招') || text.includes('怎么打') || text.includes('顺序')) {
+    return '火修推荐连招：R先开护体，E光束扫直线，Q大火球炸密集敌人，空格蓄力巨火球清远处大波。'
+  }
+  if (text.includes('冷却') || text.includes('cd') || text.includes('状态')) {
+    return `当前火修技能状态：${statusText}。`
+  }
+  return `火修技能：Q陨炎大火球爆炸溅射，E赤焰光束直线清怪，R护体炎星近身防守，空格焚天蓄炎蓄力巨火球。当前状态：${statusText}。`
+}
+
 function buildStats(game) {
   refreshUpgradePoints(game)
   return {
@@ -243,6 +315,7 @@ function buildStats(game) {
     skillLevels: { ...game.skillLevels },
     upgradePoints: game.upgradePoints,
     nextUpgradeScore: game.nextUpgradeScore,
+    iceDetonationWindow: game.iceDetonationWindow,
   }
 }
 
@@ -281,6 +354,7 @@ function createGame(role) {
     magmaJets: [],
     charges: [],
     lightnings: [],
+    iceExplosions: [],
     particles: [],
     attackCd: 0,
     skillCd: 0,
@@ -289,6 +363,7 @@ function createGame(role) {
     upgradePoints: 0,
     nextUpgradeScore: 200,
     freezeTimer: 0,
+    iceDetonationWindow: 0,
     screenFlash: 0,
     screenFlashKind: 'frost',
     spawnTimer: 1.2,
@@ -490,9 +565,9 @@ function castIceR(game) {
   const angle = Math.atan2(aim.y, aim.x)
   const side = normalize(-aim.y, aim.x)
   const level = getSkillLevel(game, 'r')
-  const cloneCount = level >= 3 ? 6 : level === 2 ? 3 : 2
-  const life = level >= 3 ? 6 : level === 2 ? 4.2 : 3
-  const radius = level >= 3 ? 88 : level === 2 ? 62 : 48
+  const cloneCount = level >= 3 ? 6 : level === 2 ? 4 : 2
+  const life = level >= 3 ? 7 : level === 2 ? 5.2 : 4
+  const radius = level >= 3 ? 92 : level === 2 ? 66 : 50
 
   for (let i = 0; i < cloneCount; i += 1) {
     const spreadIndex = i - (cloneCount - 1) / 2
@@ -506,8 +581,12 @@ function castIceR(game) {
       attackTimer: i * 0.08,
       color: i % 2 === 0 ? '#7dd3fc' : '#e0f2fe',
       level,
-      damage: level >= 3 ? 38 : level === 2 ? 28 : 22,
-      interval: level >= 3 ? 0.18 : level === 2 ? 0.27 : 0.36,
+      baseAngleOffset: level >= 3 ? spreadIndex * 0.04 : 0,
+      damage: level >= 3 ? 58 : level === 2 ? 36 : 28,
+      interval: level >= 3 ? 0.13 : level === 2 ? 0.2 : 0.26,
+      pierce: level >= 3 ? 4 : level === 2 ? 2 : 1,
+      shotCount: level >= 3 ? 2 : 1,
+      shotSpread: level >= 3 ? 0.1 : 0,
     })
   }
 
@@ -516,6 +595,7 @@ function castIceR(game) {
 }
 
 function castIceF(game) {
+  if (triggerIceDetonation(game)) return
   if (!isSkillReady(game, 'f')) return
 
   const level = getSkillLevel(game, 'f')
@@ -527,7 +607,75 @@ function castIceF(game) {
     enemy.frozenTimer = Math.max(enemy.frozenTimer || 0, freezeDuration)
   }
 
+  if (level >= 3) {
+    game.iceDetonationWindow = freezeDuration
+  }
+
   putSkillOnCooldown(game, 'f')
+}
+
+function triggerIceDetonation(game) {
+  const level = getSkillLevel(game, 'f')
+  if (level < 3 || game.iceDetonationWindow <= 0) return false
+
+  game.iceDetonationWindow = 0
+  game.screenFlash = 0.16
+  game.screenFlashKind = 'frost'
+
+  for (const enemy of game.enemies) {
+    if (enemy.frozenTimer <= 0) continue
+
+    game.iceExplosions.push({
+      x: enemy.x,
+      y: enemy.y,
+      radius: enemy.radius + 52,
+      life: 0.45,
+      maxLife: 0.45,
+      color: '#e0f2fe',
+    })
+    damageEnemy(game, enemy, 230, '#e0f2fe')
+    enemy.frozenTimer = Math.max(enemy.frozenTimer || 0, 0.45)
+    addParticle(game, enemy.x, enemy.y, '#e0f2fe', 8)
+  }
+
+  return true
+}
+
+function castIceDomain(game) {
+  if (!isSkillReady(game, 'qe')) return
+
+  const level = getSkillLevel(game, 'qe')
+  const fieldLife = level >= 3 ? 7 : level === 2 ? 5.2 : 3.8
+  const fieldRadius = level >= 3 ? 168 : level === 2 ? 128 : 98
+  const fieldDps = level >= 3 ? 58 : level === 2 ? 32 : 16
+
+  game.zones.push({
+    kind: 'frost',
+    style: 'domain',
+    x: game.player.x,
+    y: game.player.y,
+    radius: fieldRadius,
+    life: fieldLife,
+    maxLife: fieldLife,
+    dps: fieldDps,
+    freezeDuration: level >= 3 ? 0.22 : 0.12,
+    slowDuration: level >= 3 ? 1.2 : 0.85,
+    slowFactor: level >= 3 ? 0.18 : level === 2 ? 0.26 : 0.34,
+    color: '#38bdf8',
+    ringCount: level >= 3 ? 4 : 3,
+    runeCount: level >= 3 ? 12 : level === 2 ? 10 : 8,
+    rotationSpeed: level >= 3 ? 0.72 : level === 2 ? 0.54 : 0.38,
+    phase: Math.random() * Math.PI * 2,
+    runes: Array.from({ length: level >= 3 ? 12 : level === 2 ? 10 : 8 }, (_, index) => ({
+      angle: (Math.PI * 2 * index) / (level >= 3 ? 12 : level === 2 ? 10 : 8),
+      distance: 0.68 + (index % 2) * 0.16,
+      size: level >= 3 ? 10 : level === 2 ? 8 : 7,
+      spin: index % 2 === 0 ? 1 : -1,
+    })),
+  })
+
+  addParticle(game, game.player.x, game.player.y, '#e0f2fe', level >= 3 ? 28 : 14)
+  putSkillOnCooldown(game, 'qe')
 }
 
 function castIceUltimate(game) {
@@ -671,6 +819,7 @@ function castSkill(game, key = 'e') {
     if (key === 'e') castIceE(game)
     if (key === 'r') castIceR(game)
     if (key === 'f') castIceF(game)
+    if (key === 'qe') castIceDomain(game)
     if (key === 'space') castIceUltimate(game)
   }
 
@@ -703,6 +852,7 @@ function updateGame(game, dt) {
   game.attackCd = Math.max(0, game.attackCd - dt)
   game.skillCd = Math.max(0, game.skillCd - dt)
   game.freezeTimer = Math.max(0, game.freezeTimer - dt)
+  game.iceDetonationWindow = Math.max(0, game.iceDetonationWindow - dt)
   game.screenFlash = Math.max(0, game.screenFlash - dt)
   for (const key of Object.keys(game.skillCds)) {
     game.skillCds[key] = Math.max(0, game.skillCds[key] - dt)
@@ -745,16 +895,26 @@ function updateGame(game, dt) {
     clone.life -= dt
     clone.attackTimer -= dt
     if (clone.attackTimer <= 0) {
-      fireProjectile(game, clone.angle, {
-        source: clone,
-        speed: 640,
-        radius: clone.level >= 3 ? 7 : 5,
-        damage: clone.damage,
-        life: 0.85,
-        color: clone.color,
-        pierce: clone.level >= 3 ? 3 : 1,
-      })
-      addParticle(game, clone.x, clone.y, clone.color, 4)
+      const aim = normalize(game.mouse.x - clone.x, game.mouse.y - clone.y)
+      const baseAngle = Math.atan2(aim.y, aim.x) + (clone.baseAngleOffset || 0)
+      const shotCount = clone.shotCount || 1
+
+      for (let shot = 0; shot < shotCount; shot += 1) {
+        const shotOffset = shotCount === 1 ? 0 : (shot - (shotCount - 1) / 2) * clone.shotSpread
+        fireProjectile(game, baseAngle + shotOffset, {
+          source: clone,
+          speed: clone.level >= 3 ? 760 : 690,
+          radius: clone.level >= 3 ? 8 : 6,
+          damage: clone.damage,
+          life: clone.level >= 3 ? 1.05 : 0.9,
+          color: clone.color,
+          pierce: clone.pierce,
+          slowDuration: clone.level >= 3 ? 1.5 : clone.level === 2 ? 1.1 : 0.7,
+          slowFactor: clone.level >= 3 ? 0.34 : 0.46,
+        })
+      }
+
+      addParticle(game, clone.x, clone.y, clone.color, clone.level >= 3 ? 3 : 2)
       clone.attackTimer = clone.interval
     }
   }
@@ -888,6 +1048,13 @@ function updateGame(game, dt) {
           addParticle(game, enemy.x, enemy.y, '#fed7aa', 16)
           projectile.life = 0
         } else {
+          if (projectile.slowDuration > 0) {
+            enemy.slowTimer = Math.max(enemy.slowTimer || 0, projectile.slowDuration)
+            enemy.slowFactor = projectile.slowFactor
+          }
+          if (projectile.freezeDuration > 0) {
+            enemy.frozenTimer = Math.max(enemy.frozenTimer || 0, projectile.freezeDuration)
+          }
           const defeated = damageEnemy(game, enemy, projectile.damage, projectile.color)
           projectile.pierce -= 1
           if (defeated || projectile.pierce < 0) {
@@ -909,6 +1076,10 @@ function updateGame(game, dt) {
   game.lightnings = game.lightnings.filter(lightning => {
     lightning.life -= dt
     return lightning.life > 0
+  })
+  game.iceExplosions = game.iceExplosions.filter(explosion => {
+    explosion.life -= dt
+    return explosion.life > 0
   })
 
   for (const particle of game.particles) {
@@ -962,6 +1133,187 @@ function drawLightning(ctx, lightning) {
   ctx.restore()
 }
 
+function drawFrostDomain(ctx, zone, time) {
+  const alpha = clamp(zone.life / zone.maxLife, 0, 1)
+  const age = zone.maxLife - zone.life
+  const birth = clamp(age / 0.55, 0, 1)
+  const pulse = 1 + Math.sin(time * 4.2 + zone.phase) * 0.045
+  const rotation = time * zone.rotationSpeed + zone.phase
+  const radius = zone.radius * pulse
+  const gradient = ctx.createRadialGradient(zone.x, zone.y, radius * 0.12, zone.x, zone.y, radius)
+
+  gradient.addColorStop(0, `rgba(240, 249, 255, ${0.2 * alpha})`)
+  gradient.addColorStop(0.42, `rgba(125, 211, 252, ${0.2 * alpha})`)
+  gradient.addColorStop(1, `rgba(14, 165, 233, ${0.04 * alpha})`)
+
+  ctx.save()
+  ctx.globalAlpha = 0.95
+  ctx.fillStyle = gradient
+  ctx.beginPath()
+  ctx.arc(zone.x, zone.y, radius, 0, Math.PI * 2)
+  ctx.fill()
+
+  if (birth < 1) {
+    ctx.strokeStyle = `rgba(240, 249, 255, ${(1 - birth) * 0.78})`
+    ctx.lineWidth = 6 - birth * 3
+    ctx.shadowBlur = 28
+    ctx.shadowColor = '#e0f2fe'
+    ctx.beginPath()
+    ctx.arc(zone.x, zone.y, radius * (0.18 + birth * 0.95), 0, Math.PI * 2)
+    ctx.stroke()
+  }
+
+  ctx.shadowBlur = 18
+  ctx.shadowColor = '#bae6fd'
+  ctx.strokeStyle = `rgba(224, 242, 254, ${0.58 * alpha})`
+  ctx.lineWidth = 2.5
+  for (let ring = 1; ring <= zone.ringCount; ring += 1) {
+    const ringRadius = (radius * ring) / zone.ringCount
+    ctx.beginPath()
+    ctx.arc(zone.x, zone.y, ringRadius, 0, Math.PI * 2)
+    ctx.stroke()
+  }
+
+  ctx.strokeStyle = `rgba(240, 249, 255, ${0.74 * alpha})`
+  ctx.lineWidth = 4
+  ctx.lineCap = 'round'
+  for (let i = 0; i < 5; i += 1) {
+    const start = rotation * (i % 2 === 0 ? 1 : -1) + (Math.PI * 2 * i) / 5
+    const end = start + Math.PI * (0.18 + (i % 2) * 0.08)
+    ctx.beginPath()
+    ctx.arc(zone.x, zone.y, radius * (0.58 + (i % 3) * 0.11), start, end)
+    ctx.stroke()
+  }
+  ctx.lineCap = 'butt'
+
+  const spokeCount = zone.runeCount
+  ctx.strokeStyle = `rgba(186, 230, 253, ${0.45 * alpha})`
+  ctx.lineWidth = 1.6
+  for (let i = 0; i < spokeCount; i += 1) {
+    const angle = rotation + (Math.PI * 2 * i) / spokeCount
+    const inner = radius * 0.22
+    const outer = radius * 0.88
+    ctx.beginPath()
+    ctx.moveTo(zone.x + Math.cos(angle) * inner, zone.y + Math.sin(angle) * inner)
+    ctx.lineTo(zone.x + Math.cos(angle) * outer, zone.y + Math.sin(angle) * outer)
+    ctx.stroke()
+  }
+
+  ctx.strokeStyle = `rgba(224, 242, 254, ${0.52 * alpha})`
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  for (let i = 0; i < 6; i += 1) {
+    const angle = -rotation * 0.7 + (Math.PI * 2 * i) / 6
+    const x = zone.x + Math.cos(angle) * radius * 0.42
+    const y = zone.y + Math.sin(angle) * radius * 0.42
+    if (i === 0) ctx.moveTo(x, y)
+    else ctx.lineTo(x, y)
+  }
+  ctx.closePath()
+  ctx.stroke()
+  ctx.beginPath()
+  for (let i = 0; i < 6; i += 1) {
+    const angle = rotation * 0.85 + Math.PI / 6 + (Math.PI * 2 * i) / 6
+    const x = zone.x + Math.cos(angle) * radius * 0.28
+    const y = zone.y + Math.sin(angle) * radius * 0.28
+    if (i === 0) ctx.moveTo(x, y)
+    else ctx.lineTo(x, y)
+  }
+  ctx.closePath()
+  ctx.stroke()
+
+  for (let i = 0; i < 10; i += 1) {
+    const angle = rotation * 1.35 + (Math.PI * 2 * i) / 10
+    const inner = radius * 0.9
+    const outer = radius * (1.02 + Math.sin(time * 5 + i) * 0.03)
+    ctx.strokeStyle = `rgba(224, 242, 254, ${0.34 * alpha})`
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.moveTo(zone.x + Math.cos(angle) * inner, zone.y + Math.sin(angle) * inner)
+    ctx.lineTo(zone.x + Math.cos(angle) * outer, zone.y + Math.sin(angle) * outer)
+    ctx.stroke()
+  }
+
+  ctx.fillStyle = `rgba(240, 249, 255, ${0.85 * alpha})`
+  ctx.strokeStyle = `rgba(14, 165, 233, ${0.75 * alpha})`
+  for (const rune of zone.runes) {
+    const angle = rotation * rune.spin + rune.angle
+    const x = zone.x + Math.cos(angle) * radius * rune.distance
+    const y = zone.y + Math.sin(angle) * radius * rune.distance
+    const size = rune.size * alpha
+
+    ctx.save()
+    ctx.translate(x, y)
+    ctx.rotate(angle + Math.PI / 4)
+    ctx.beginPath()
+    ctx.moveTo(0, -size)
+    ctx.lineTo(size * 0.5, 0)
+    ctx.lineTo(0, size)
+    ctx.lineTo(-size * 0.5, 0)
+    ctx.closePath()
+    ctx.fill()
+    ctx.stroke()
+    ctx.restore()
+  }
+
+  for (let i = 0; i < 7; i += 1) {
+    const orbit = (time * 0.9 + i * 1.7 + zone.phase) % (Math.PI * 2)
+    const sparkleRadius = radius * (0.32 + (i % 3) * 0.18)
+    const sparkleAlpha = (0.32 + Math.sin(time * 4.6 + i) * 0.18) * alpha
+    ctx.fillStyle = `rgba(240, 249, 255, ${sparkleAlpha})`
+    ctx.beginPath()
+    ctx.arc(
+      zone.x + Math.cos(orbit) * sparkleRadius,
+      zone.y + Math.sin(orbit) * sparkleRadius,
+      2 + (i % 2),
+      0,
+      Math.PI * 2,
+    )
+    ctx.fill()
+  }
+
+  ctx.shadowBlur = 24
+  ctx.fillStyle = `rgba(224, 242, 254, ${0.9 * alpha})`
+  ctx.beginPath()
+  ctx.arc(zone.x, zone.y, Math.max(7, radius * 0.08), 0, Math.PI * 2)
+  ctx.fill()
+  ctx.restore()
+}
+
+function drawIceExplosion(ctx, explosion) {
+  const alpha = clamp(explosion.life / explosion.maxLife, 0, 1)
+  const progress = 1 - alpha
+  const radius = explosion.radius * (0.55 + progress * 0.55)
+
+  ctx.save()
+  ctx.globalAlpha = alpha
+  ctx.shadowBlur = 20
+  ctx.shadowColor = explosion.color
+  ctx.strokeStyle = explosion.color
+  ctx.lineWidth = 4
+  ctx.beginPath()
+  ctx.arc(explosion.x, explosion.y, radius, 0, Math.PI * 2)
+  ctx.stroke()
+
+  ctx.strokeStyle = `rgba(186, 230, 253, ${0.75 * alpha})`
+  ctx.lineWidth = 2
+  for (let i = 0; i < 10; i += 1) {
+    const angle = (Math.PI * 2 * i) / 10 + progress * 0.4
+    const inner = radius * 0.28
+    const outer = radius * (0.88 + (i % 2) * 0.08)
+    ctx.beginPath()
+    ctx.moveTo(explosion.x + Math.cos(angle) * inner, explosion.y + Math.sin(angle) * inner)
+    ctx.lineTo(explosion.x + Math.cos(angle) * outer, explosion.y + Math.sin(angle) * outer)
+    ctx.stroke()
+  }
+
+  ctx.fillStyle = `rgba(224, 242, 254, ${0.16 * alpha})`
+  ctx.beginPath()
+  ctx.arc(explosion.x, explosion.y, radius * 0.58, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.restore()
+}
+
 function drawGame(ctx, game) {
   ctx.clearRect(0, 0, game.width, game.height)
 
@@ -998,6 +1350,12 @@ function drawGame(ctx, game) {
   for (const zone of game.zones) {
     const alpha = clamp(zone.life / zone.maxLife, 0, 1)
     const isFrostZone = zone.kind === 'frost'
+
+    if (zone.style === 'domain') {
+      drawFrostDomain(ctx, zone, game.time)
+      continue
+    }
+
     ctx.fillStyle = isFrostZone
       ? `rgba(125, 211, 252, ${0.13 + alpha * 0.15})`
       : `rgba(249, 115, 22, ${0.18 + alpha * 0.16})`
@@ -1084,6 +1442,10 @@ function drawGame(ctx, game) {
 
   for (const lightning of game.lightnings) {
     drawLightning(ctx, lightning)
+  }
+
+  for (const explosion of game.iceExplosions) {
+    drawIceExplosion(ctx, explosion)
   }
 
   for (const beam of game.beams) {
@@ -1287,7 +1649,9 @@ function drawGame(ctx, game) {
     ])
     skillLines.forEach(([key, name, cooldown, level], index) => {
       ctx.fillStyle = cooldown <= 0 ? '#bbf7d0' : '#fed7aa'
-      const readyText = cooldown <= 0 ? '就绪' : `${cooldown.toFixed(1)}s`
+      const readyText = game.role.id === 'bing' && key === 'F' && game.iceDetonationWindow > 0
+        ? '再按F引爆'
+        : cooldown <= 0 ? '就绪' : `${cooldown.toFixed(1)}s`
       ctx.fillText(`${key} ${name} ${level}阶: ${readyText}`, game.width - 210, 104 + index * 16)
     })
   } else {
@@ -1311,8 +1675,11 @@ export default function SpiritVeinGame() {
   const [phase, setPhase] = useState('select')
   const [selectedRole, setSelectedRole] = useState(null)
   const [stats, setStats] = useState(INITIAL_STATS)
+  const [assistantQuestion, setAssistantQuestion] = useState('')
+  const [assistantAnswer, setAssistantAnswer] = useState(ASSISTANT_IDLE_TEXT)
 
   const currentRole = selectedRole ? ROLES[selectedRole] : null
+  const assistantQuestions = currentRole?.id === 'huo' ? FIRE_ASSISTANT_QUESTIONS : ICE_ASSISTANT_QUESTIONS
 
   function startGame(roleId) {
     const role = ROLES[roleId]
@@ -1320,6 +1687,8 @@ export default function SpiritVeinGame() {
     gameRef.current = game
     setSelectedRole(roleId)
     setStats(buildStats(game))
+    setAssistantQuestion('')
+    setAssistantAnswer(ASSISTANT_IDLE_TEXT)
     setPhase('playing')
   }
 
@@ -1328,12 +1697,27 @@ export default function SpiritVeinGame() {
     setPhase('select')
     setSelectedRole(null)
     setStats(INITIAL_STATS)
+    setAssistantQuestion('')
+    setAssistantAnswer(ASSISTANT_IDLE_TEXT)
   }
 
   function restartGame() {
     if (selectedRole) {
       startGame(selectedRole)
     }
+  }
+
+  function askAssistant(question) {
+    const trimmedQuestion = question.trim()
+    if (!trimmedQuestion || !currentRole) return
+
+    setAssistantQuestion(trimmedQuestion)
+    setAssistantAnswer(answerSkillQuestion(trimmedQuestion, currentRole, stats))
+  }
+
+  function submitAssistantQuestion(event) {
+    event.preventDefault()
+    askAssistant(assistantQuestion)
   }
 
   function syncStatsFromGame() {
@@ -1405,6 +1789,11 @@ export default function SpiritVeinGame() {
         event.preventDefault()
       }
       game.keys.add(key)
+      if (event.repeat && ['q', 'e', 'r', 'f', ' '].includes(key)) return
+      if (game.role.id === 'bing' && (key === 'q' || key === 'e') && game.keys.has('q') && game.keys.has('e')) {
+        castSkill(game, 'qe')
+        return
+      }
       if (key === 'q') {
         castSkill(game, 'q')
       }
@@ -1532,21 +1921,48 @@ export default function SpiritVeinGame() {
                   const detail = SKILL_DETAILS[currentRole.id][key]
                   const level = stats.skillLevels[key] || 1
                   const cooldown = stats.skillCds[key] || 0
+                  const detonationReady = currentRole.id === 'bing' && key === 'f' && stats.iceDetonationWindow > 0
+                  const tierText = currentRole.id === 'bing' && key === 'f' && level < 3
+                    ? `${detail.tiers[level - 1]}（3阶解锁二段）`
+                    : detail.tiers[level - 1]
                   const canUpgrade = stats.upgradePoints > 0 && level < 3
 
                   return (
                     <div className={`skill-card ${currentRole.id}-skill tier-${level}`} key={key}>
                       <div>
                         <strong>{detail.keyLabel} {detail.name}</strong>
-                        <span>{level} 阶 · {detail.tiers[level - 1]}</span>
+                        <span>{level} 阶 · {tierText}</span>
                       </div>
-                      <em>{cooldown <= 0 ? '就绪' : `${cooldown.toFixed(1)}s`}</em>
+                      <em>{detonationReady ? '二段待发' : cooldown <= 0 ? '就绪' : `${cooldown.toFixed(1)}s`}</em>
                       <button type="button" disabled={!canUpgrade} onClick={() => upgradeSkill(key)}>
                         {level >= 3 ? '满阶' : '升阶'}
                       </button>
                     </div>
                   )
                 })}
+              </div>
+              <div className="assistant-panel">
+                <div className="assistant-copy">
+                  <span>器灵助手</span>
+                  <strong>问技能</strong>
+                  <p>{assistantAnswer}</p>
+                </div>
+                <form className="assistant-form" onSubmit={submitAssistantQuestion}>
+                  <input
+                    value={assistantQuestion}
+                    onChange={event => setAssistantQuestion(event.target.value)}
+                    placeholder="问：F怎么用？Q+E怎么放？怎么升阶？"
+                    aria-label="向器灵助手询问技能"
+                  />
+                  <button type="submit">询问</button>
+                </form>
+                <div className="assistant-quick">
+                  {assistantQuestions.map(question => (
+                    <button type="button" key={question} onClick={() => askAssistant(question)}>
+                      {question}
+                    </button>
+                  ))}
+                </div>
               </div>
             </>
           )}
@@ -1582,7 +1998,7 @@ export default function SpiritVeinGame() {
             <span>鼠标左键施放普攻</span>
             <span>
               {currentRole.id === 'bing'
-                ? '冰修：Q 冰波 · E 剑阵 · R 分身 · F 冰封 · 空格天雷'
+                ? '冰修：Q 冰波 · E 剑阵 · Q+E 冰场 · R 分身 · F 冰封 · 空格天雷'
                 : '火修：Q 大火球 · E 光束 · R 环绕火球 · 空格蓄力火球'}
             </span>
             <span>鼠标右键释放 E 技能</span>

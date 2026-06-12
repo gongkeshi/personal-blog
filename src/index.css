@@ -442,6 +442,92 @@ nav {
   cursor: not-allowed;
 }
 
+.assistant-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr);
+  gap: 0.8rem;
+  margin: 0 0 1rem;
+  border: 1px solid rgba(14, 116, 144, 0.18);
+  border-radius: 8px;
+  padding: 0.85rem;
+  background: rgba(236, 254, 255, 0.82);
+}
+
+.assistant-copy {
+  min-width: 0;
+}
+
+.assistant-copy span {
+  display: block;
+  color: #0e7490;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.assistant-copy strong {
+  display: block;
+  color: #0f172a;
+  font-size: 1.12rem;
+  margin-bottom: 0.2rem;
+}
+
+.assistant-copy p {
+  color: #334155;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.assistant-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.45rem;
+  align-self: start;
+}
+
+.assistant-form input {
+  min-width: 0;
+  border: 1px solid rgba(14, 116, 144, 0.22);
+  border-radius: 8px;
+  padding: 0.6rem 0.7rem;
+  background: rgba(255, 255, 255, 0.9);
+  color: #0f172a;
+  font: inherit;
+}
+
+.assistant-form input:focus {
+  outline: 3px solid rgba(14, 165, 233, 0.18);
+  border-color: rgba(2, 132, 199, 0.45);
+}
+
+.assistant-form button,
+.assistant-quick button {
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.assistant-form button {
+  padding: 0.6rem 0.8rem;
+  background: #0e7490;
+  color: #ecfeff;
+}
+
+.assistant-quick {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.assistant-quick button {
+  padding: 0.38rem 0.58rem;
+  background: rgba(255, 255, 255, 0.86);
+  color: #0e7490;
+  border: 1px solid rgba(14, 116, 144, 0.18);
+  font-size: 0.82rem;
+}
+
 .canvas-wrap {
   position: relative;
   overflow: hidden;
@@ -587,5 +673,13 @@ nav {
 
   .skill-strip {
     grid-template-columns: 1fr;
+  }
+
+  .assistant-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .assistant-quick {
+    grid-column: auto;
   }
 }
