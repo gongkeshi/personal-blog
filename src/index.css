@@ -53,6 +53,7 @@ header {
 nav {
   display: flex;
   justify-content: center;
+  flex-wrap: wrap;
   gap: 1.5rem;
   margin-bottom: 3rem;
   animation: fadeIn 1.5s ease-out;
@@ -134,10 +135,17 @@ nav {
   font-weight: normal;
 }
 
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  margin-bottom: 1.5rem;
+  border-radius: 8px;
+}
+
 .markdown-body table {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 1.5rem;
+  min-width: 640px;
   background: #ffffff;
   border-radius: 8px;
   overflow: hidden;
@@ -148,6 +156,8 @@ nav {
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
   padding: 0.75rem 1rem;
   text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
 }
 
 .markdown-body th {
@@ -191,4 +201,391 @@ nav {
   font-size: 1.2rem;
   color: #64748b;
   padding: 2rem;
+}
+
+/* Task 4 Game */
+.game-shell {
+  color: #0f172a;
+}
+
+.game-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.game-kicker {
+  color: #0f766e;
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+}
+
+.game-heading h2 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.game-heading p {
+  max-width: 720px;
+  color: #475569;
+}
+
+.game-score-card {
+  min-width: 120px;
+  border: 1px solid rgba(20, 184, 166, 0.28);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  background: rgba(240, 253, 250, 0.86);
+  text-align: right;
+}
+
+.game-score-card span,
+.game-toolbar span {
+  display: block;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.game-score-card strong {
+  color: #0f766e;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.character-select {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.role-card {
+  position: relative;
+  display: grid;
+  gap: 0.45rem;
+  min-height: 210px;
+  padding: 1.25rem;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(240, 253, 250, 0.76));
+  color: #0f172a;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.role-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(20, 184, 166, 0.45);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.1);
+}
+
+.role-mark {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.8);
+}
+
+.role-name {
+  font-size: 1.6rem;
+  font-weight: 800;
+}
+
+.role-title {
+  color: #0f766e;
+  font-weight: 700;
+}
+
+.role-desc {
+  color: #475569;
+  line-height: 1.55;
+}
+
+.role-skill {
+  align-self: end;
+  color: #b45309;
+  font-weight: 800;
+}
+
+.game-toolbar {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.game-toolbar div {
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 8px;
+  padding: 0.7rem 0.8rem;
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.game-toolbar strong {
+  display: block;
+  color: #0f172a;
+  font-size: 1.1rem;
+}
+
+.upgrade-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: -0.25rem 0 0.65rem;
+  border: 1px solid rgba(2, 132, 199, 0.18);
+  border-radius: 8px;
+  padding: 0.65rem 0.8rem;
+  background: rgba(240, 249, 255, 0.86);
+}
+
+.upgrade-summary strong {
+  color: #075985;
+}
+
+.upgrade-summary span {
+  color: #475569;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.skill-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+  gap: 0.65rem;
+  margin: 0 0 1rem;
+}
+
+.skill-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.45rem;
+  min-height: 112px;
+  border: 1px solid rgba(2, 132, 199, 0.2);
+  border-radius: 8px;
+  padding: 0.7rem;
+  background: rgba(224, 242, 254, 0.72);
+  color: #0c4a6e;
+}
+
+.skill-card.tier-3 {
+  border-color: rgba(14, 165, 233, 0.55);
+  background: linear-gradient(135deg, rgba(224, 242, 254, 0.96), rgba(199, 210, 254, 0.9));
+  box-shadow: 0 10px 28px rgba(14, 165, 233, 0.18);
+}
+
+.skill-card.huo-skill {
+  border-color: rgba(249, 115, 22, 0.25);
+  background: rgba(255, 237, 213, 0.72);
+  color: #7c2d12;
+}
+
+.skill-card.huo-skill.tier-3 {
+  border-color: rgba(234, 88, 12, 0.58);
+  background: linear-gradient(135deg, rgba(255, 237, 213, 0.96), rgba(254, 202, 202, 0.9));
+  box-shadow: 0 10px 28px rgba(234, 88, 12, 0.18);
+}
+
+.skill-card strong,
+.skill-card span,
+.skill-card em {
+  display: block;
+}
+
+.skill-card strong {
+  color: #0c4a6e;
+  font-weight: 800;
+}
+
+.skill-card.huo-skill strong {
+  color: #9a3412;
+}
+
+.skill-card span {
+  color: #475569;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.skill-card em {
+  color: #0369a1;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.skill-card.huo-skill em {
+  color: #c2410c;
+}
+
+.skill-card button {
+  grid-column: 1 / -1;
+  border: 0;
+  border-radius: 8px;
+  padding: 0.45rem 0.6rem;
+  background: #0284c7;
+  color: #f8fafc;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.skill-card.huo-skill button {
+  background: #ea580c;
+}
+
+.skill-card button:disabled {
+  background: #cbd5e1;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+.canvas-wrap {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #0f172a;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.18);
+}
+
+.canvas-wrap canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 12 / 7;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.canvas-wrap canvas:focus {
+  outline: 3px solid rgba(20, 184, 166, 0.55);
+  outline-offset: -3px;
+}
+
+.game-over-panel {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: min(360px, calc(100% - 2rem));
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(254, 226, 226, 0.7);
+  border-radius: 8px;
+  padding: 1.25rem;
+  background: rgba(15, 23, 42, 0.88);
+  color: #f8fafc;
+  text-align: center;
+  backdrop-filter: blur(10px);
+}
+
+.game-over-panel p {
+  color: #fecaca;
+  font-weight: 800;
+}
+
+.game-over-panel h3 {
+  margin: 0.4rem 0 1rem;
+  font-size: 1.8rem;
+}
+
+.game-over-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.game-over-actions button {
+  border: 0;
+  border-radius: 8px;
+  padding: 0.7rem 1rem;
+  background: #14b8a6;
+  color: #042f2e;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.game-over-actions button:last-child {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.control-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+.control-strip span {
+  border: 1px solid rgba(20, 184, 166, 0.24);
+  border-radius: 8px;
+  padding: 0.45rem 0.7rem;
+  background: rgba(240, 253, 250, 0.82);
+  color: #0f766e;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.enemy-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+}
+
+.enemy-strip span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 8px;
+  padding: 0.42rem 0.65rem;
+  background: rgba(255, 255, 255, 0.74);
+  color: #334155;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.enemy-strip i {
+  width: 0.72rem;
+  height: 0.72rem;
+  border-radius: 50%;
+}
+
+@media (max-width: 820px) {
+  .app-container {
+    padding: 1rem;
+  }
+
+  .content-area {
+    padding: 1.25rem;
+  }
+
+  .gradient-text {
+    font-size: 2.35rem;
+  }
+
+  .game-heading {
+    display: grid;
+  }
+
+  .game-score-card {
+    text-align: left;
+  }
+
+  .character-select {
+    grid-template-columns: 1fr;
+  }
+
+  .game-toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .upgrade-summary {
+    display: grid;
+  }
+
+  .skill-strip {
+    grid-template-columns: 1fr;
+  }
 }
