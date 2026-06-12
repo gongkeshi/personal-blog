@@ -27,8 +27,9 @@ At the same time, the xianxia theme gives the game a more personal and memorable
 | Main Goal | Protect the bottom Spirit Vein Core for as long as possible |
 | Player Control | WASD / arrow keys for movement, mouse for aiming |
 | Basic Attack | Left mouse button |
-| Ice Cultivator Skills | Q, E, R, F, Q+E, and Space |
+| Ice Cultivator Skills | Q, E, G, R, F, Q+E, and Space |
 | Fire Cultivator Skills | Q, E, R, and Space |
+| Pause Control | P key pauses or resumes the game |
 | Skill Growth | Every 200 score grants 1 upgrade point |
 | Skill Tiers | Each ice skill has 3 tiers; tier 3 has exaggerated effects |
 | Score Logic | Survival time and enemy kills increase score |
@@ -44,6 +45,7 @@ At the same time, the xianxia theme gives the game a more personal and memorable
 | Basic Attack | 冰棱术 |
 | Q Skill | 半月霜波: releases a crescent-shaped ice wave and slows enemies on hit |
 | E Skill | 万剑归宗: releases multiple radial sword projectiles |
+| G Skill | 人剑合一: hides the human body and transforms the player into a flying sword for 5 seconds |
 | R Skill | 冰影分身: summons stronger clones that continuously attack toward the current mouse direction |
 | F Skill | 玄冰封界: directly freezes all enemies; tier 3 unlocks a second active press that detonates frozen targets |
 | Q+E Domain Skill | 冰魄领域: creates an ice-array frost domain under the player for area control |
@@ -58,6 +60,7 @@ At the same time, the xianxia theme gives the game a more personal and memorable
 | --- | --- | --- | --- |
 | Q 半月霜波 | One crescent wave that slows enemies | Two wider crescent waves | Five large ice moons with heavy slow and short freeze |
 | E 万剑归宗 | One radial sword wave | Two radial sword layers | Three full-screen sword storms with lightning visuals |
+| G 人剑合一 | Flying-sword form for 5 seconds | Faster sword form with stronger freeze | Heavenly sword form that leaves frost sword traces |
 | R 冰影分身 | Two faster clones that follow mouse aiming | Four stronger clones with slowing shots | Six high-speed clones creating a bullet-screen effect |
 | F 玄冰封界 | Directly freeze all enemies for 2 seconds | Longer direct freeze | Long global freeze, then press F again to detonate each frozen target |
 | Q+E 冰魄领域 | Create an ice-array frost domain under the player | Larger domain with rotating ice runes | Extreme frost array with stronger control and damage |
@@ -93,9 +96,9 @@ At the same time, the xianxia theme gives the game a more personal and memorable
 | 妖兽 | Basic enemy, appears from the beginning |
 | 心魔 | Fast enemy, appears after the early stage |
 | 魔修 | Slower but stronger enemy |
-| 天劫残影 | Elite enemy with high HP, appears in the late stage |
+| 天劫残影 | Elite enemy with high HP and stronger magic projectiles, appears in the late stage |
 
-The enemy waves become harder over time. This creates a survival curve: the first stage lets the player learn the controls, and later stages become more intense.
+The enemy waves become harder over time. Enemies can also launch magic projectiles toward the player or the Spirit Vein Core, so the player must dodge instead of only blocking melee contact. This creates a survival curve: the first stage lets the player learn the controls, and later stages become more intense.
 
 ## 5. Tech Stack
 
@@ -108,7 +111,7 @@ The enemy waves become harder over time. This creates a survival curve: the firs
 | Styling | CSS |
 | Deployment Target | Static website / GitHub Pages-compatible build |
 | AI Development Partner | LLM-assisted planning, debugging, and iteration |
-| In-Game Assistant | Local free-form skill Q&A agent |
+| In-Game Assistant | DeepSeek API proxy first, local fallback when unavailable |
 
 ## 6. AI-Assisted Development Process
 
@@ -132,7 +135,8 @@ The LLM assisted with:
 4. Spawning enemies from the edge of the battlefield.
 5. Adding collision detection between projectiles, enemies, the player, and the core.
 6. Building score, HP, cooldown, and game-over logic.
-7. Designing a small in-game skill assistant for answering player questions.
+7. Designing a small in-game skill assistant for answering player questions through a DeepSeek proxy API.
+8. Adding pause/resume behavior and the 人剑合一 skill.
 
 ### 6.3 Problem Solving and Iteration
 
@@ -156,9 +160,9 @@ The AI-generated plan needed verification. I checked the implementation with:
 
 This helped catch real issues such as a lint warning in enemy coordinate initialization and an overly fast early-game failure curve.
 
-### 6.5 Embedded Skill Assistant
+### 6.5 Embedded DeepSeek Skill Assistant
 
-To satisfy the embedded agent bonus in a stable way, the game includes a lightweight in-game assistant named "器灵助手". The player can type free-form questions or click quick prompts. Example questions include:
+To satisfy the embedded agent bonus in a stable way, the game includes an in-game assistant named "器灵助手". The player can type free-form questions or click quick prompts. Example questions include:
 
 1. "F怎么用?"
 2. "Q+E领域怎么放?"
@@ -166,7 +170,7 @@ To satisfy the embedded agent bonus in a stable way, the game includes a lightwe
 4. "灵脉快没血了怎么办?"
 5. "被围住应该先放什么技能?"
 
-The assistant answers based on the selected character, current skill tiers, cooldown status, upgrade points, Spirit Vein HP, and player HP. It is implemented locally instead of exposing an API key in the public browser code. This keeps the GitHub Pages deployment safe and reliable while still demonstrating an AI-agent-style interaction inside the game.
+The frontend sends the selected character, current skill tiers, cooldown status, upgrade points, Spirit Vein HP, player HP, and the player's question to a server-side DeepSeek proxy. The proxy reads `DEEPSEEK_API_KEY` from a server environment variable and calls the real DeepSeek Chat Completions API. If the proxy is not configured, the game falls back to local guidance so the demonstration still works.
 
 ## 7. Results
 
@@ -179,7 +183,8 @@ The current prototype includes:
 5. Four enemy types.
 6. Game-over and restart flow.
 7. Responsive layout that still works in a narrow browser panel.
-8. An embedded "器灵助手" panel for asking free-form skill, upgrade, and survival questions.
+8. P-key pause and resume.
+9. An embedded "器灵助手" panel for asking free-form skill, upgrade, and survival questions through a DeepSeek proxy API.
 
 The project can be run locally with:
 
@@ -195,14 +200,14 @@ npm run build
 
 ## 8. Current Limitations and Next Steps
 
-The current version focuses on a stable playable core and a local skill Q&A assistant. The assistant is intentionally limited to skill explanation, cooldown advice, upgrade guidance, and simple survival strategy, which makes it useful during a short classroom demonstration.
+The current version focuses on a stable playable core and a DeepSeek-ready skill Q&A assistant. Because GitHub Pages is a static host, the DeepSeek key must be stored in a separate server-side proxy environment variable instead of inside the public frontend bundle.
 
 Planned next steps:
 
-1. Add optional backend-based DeepSeek API support for more natural conversation.
+1. Deploy the DeepSeek proxy function to a serverless platform and configure its URL in the game panel.
 2. Add screenshots or a short demo video for the final presentation.
 3. Continue balancing enemy waves and skill cooldowns.
-4. Add more assistant answers for enemy strategy and character recommendations.
+4. Add more assistant prompts for enemy strategy and character recommendations.
 
 ## 9. Rubric Coverage
 
@@ -213,5 +218,5 @@ Planned next steps:
 | Technical Execution | React + Canvas playable prototype |
 | Documentation Quality | This report records design, process, results, and next steps |
 | Final Presentation | Game page can be opened and played during presentation |
-| Bonus: Embedded AI Agent | Implemented as a local free-form skill Q&A assistant |
+| Bonus: Embedded AI Agent | Implemented as a DeepSeek API proxy integration with local fallback |
 | Bonus: Cross-platform Support | Static web app can run in modern browsers on multiple systems |

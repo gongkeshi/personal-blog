@@ -313,7 +313,7 @@ nav {
 
 .game-toolbar {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
   gap: 0.75rem;
   margin-bottom: 1rem;
 }
@@ -477,6 +477,14 @@ nav {
   line-height: 1.5;
 }
 
+.assistant-copy small {
+  display: block;
+  margin-top: 0.35rem;
+  color: #0e7490;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
 .assistant-form {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -511,6 +519,37 @@ nav {
   padding: 0.6rem 0.8rem;
   background: #0e7490;
   color: #ecfeff;
+}
+
+.assistant-form button:disabled,
+.assistant-quick button:disabled {
+  background: #cbd5e1;
+  color: #64748b;
+  cursor: wait;
+}
+
+.assistant-api-settings {
+  grid-column: 2;
+  align-self: end;
+  color: #0e7490;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.assistant-api-settings summary {
+  cursor: pointer;
+  margin-bottom: 0.35rem;
+}
+
+.assistant-api-settings input {
+  width: 100%;
+  border: 1px solid rgba(14, 116, 144, 0.22);
+  border-radius: 8px;
+  padding: 0.52rem 0.65rem;
+  background: rgba(255, 255, 255, 0.9);
+  color: #0f172a;
+  font: inherit;
+  font-size: 0.82rem;
 }
 
 .assistant-quick {
@@ -680,6 +719,10 @@ nav {
   }
 
   .assistant-quick {
+    grid-column: auto;
+  }
+
+  .assistant-api-settings {
     grid-column: auto;
   }
 }

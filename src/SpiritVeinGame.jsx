@@ -5,22 +5,25 @@ const GAME_HEIGHT = 560
 const INITIAL_SKILL_COOLDOWNS = {
   q: 0,
   e: 0,
+  g: 0,
   r: 0,
   f: 0,
   qe: 0,
   space: 0,
 }
-const SKILL_KEYS = ['q', 'e', 'r', 'f', 'qe', 'space']
+const SKILL_KEYS = ['q', 'e', 'g', 'r', 'f', 'qe', 'space']
 const INITIAL_SKILL_LEVELS = {
   q: 1,
   e: 1,
+  g: 1,
   r: 1,
   f: 1,
   qe: 1,
   space: 1,
 }
 const ASSISTANT_IDLE_TEXT = '我是器灵助手，可以自由问技能、连招、升阶、保命、守灵脉和当前冷却。'
-const ICE_ASSISTANT_QUESTIONS = ['冰修怎么连招？', 'F怎么二段爆炸？', 'Q+E领域怎么放？', '怎么升阶？']
+const ASSISTANT_API_IDLE_TEXT = 'DeepSeek API：请先填入代理地址，或部署仓库里的 api/deepseek-skill-agent.js。'
+const ICE_ASSISTANT_QUESTIONS = ['人剑合一怎么用？', '冰修怎么连招？', 'Q+E领域怎么放？', '怎么升阶？']
 const FIRE_ASSISTANT_QUESTIONS = ['火修怎么连招？', '大招怎么用？', 'R技能有什么用？', '怎么升阶？']
 const SKILL_DETAILS = {
   bing: {
@@ -33,6 +36,11 @@ const SKILL_DETAILS = {
       keyLabel: 'E',
       name: '万剑归宗',
       tiers: ['一圈剑阵清场', '双层剑阵，高穿透', '三重剑暴，雷光满屏'],
+    },
+    g: {
+      keyLabel: 'G',
+      name: '人剑合一',
+      tiers: ['化身飞剑 5 秒', '剑形更快，剑气更强', '天剑合一，飞剑留下寒霜剑痕'],
     },
     r: {
       keyLabel: 'R',
@@ -91,6 +99,7 @@ const INITIAL_STATS = {
   upgradePoints: 0,
   nextUpgradeScore: 200,
   iceDetonationWindow: 0,
+  paused: false,
 }
 
 const ROLES = {
@@ -98,9 +107,9 @@ const ROLES = {
     id: 'bing',
     name: '冰修',
     title: '寒霜分影',
-    trait: '控场型修士，F 键冰封全场，Q+E 原地展开冰魄领域。',
+    trait: '控场型修士，G 键人剑合一化身飞剑 5 秒，Q+E 原地展开冰魄领域。',
     attack: '冰棱术',
-    skill: '寒霜六式',
+    skill: '寒霜七式',
     hp: 145,
     speed: 225,
     damageTaken: 0.82,
@@ -110,6 +119,7 @@ const ROLES = {
     skills: {
       q: { name: '半月霜波', cooldown: 2.2 },
       e: { name: '万剑归宗', cooldown: 5.5 },
+      g: { name: '人剑合一', cooldown: 6.8 },
       r: { name: '冰影分身', cooldown: 7.8 },
       f: { name: '玄冰封界', cooldown: 8.2 },
       qe: { name: '冰魄领域', cooldown: 12.5 },
@@ -210,19 +220,39 @@ function distanceToSegment(point, start, end) {
 
 function getRoleSkillKeys(role) {
   if (!role?.skills) return []
-  return role.skills.qe ? ['q', 'e', 'r', 'f', 'qe', 'space'] : ['q', 'e', 'r', 'space']
+  return role.skills.g ? ['q', 'e', 'g', 'r', 'f', 'qe', 'space'] : ['q', 'e', 'r', 'space']
 }
 
 function getRoleSkillText(role) {
   const keys = getRoleSkillKeys(role)
   const labels = keys.map(key => SKILL_DETAILS[role.id][key].keyLabel).join('/')
-  const countText = keys.length === 6 ? '六式' : keys.length === 5 ? '五式' : '四式'
+  const countText = keys.length === 7 ? '七式' : keys.length === 6 ? '六式' : keys.length === 5 ? '五式' : '四式'
   return `技能：${labels}${countText}，每 200 分获得 1 个升阶点，最高 3 阶`
 }
 
 function isTextEntryTarget(target) {
   const tagName = target?.tagName?.toLowerCase()
   return target?.isContentEditable || tagName === 'input' || tagName === 'textarea' || tagName === 'select'
+}
+
+function getStoredAssistantEndpoint() {
+  try {
+    return window.localStorage.getItem('deepseekAgentEndpoint') || import.meta.env.VITE_DEEPSEEK_AGENT_ENDPOINT || ''
+  } catch {
+    return import.meta.env.VITE_DEEPSEEK_AGENT_ENDPOINT || ''
+  }
+}
+
+function saveAssistantEndpoint(endpoint) {
+  try {
+    if (endpoint.trim()) {
+      window.localStorage.setItem('deepseekAgentEndpoint', endpoint.trim())
+    } else {
+      window.localStorage.removeItem('deepseekAgentEndpoint')
+    }
+  } catch {
+    // Local storage can be unavailable in restricted browser modes.
+  }
 }
 
 function spentUpgradePoints(skillLevels) {
@@ -263,6 +293,61 @@ function getSkillStatusText(role, stats) {
     .join('；')
 }
 
+function buildAssistantPayload(question, role, stats) {
+  return {
+    question,
+    role: {
+      id: role.id,
+      name: role.name,
+      title: role.title,
+      trait: role.trait,
+    },
+    gameState: {
+      score: stats.score,
+      kills: stats.kills,
+      time: stats.time,
+      coreHp: stats.coreHp,
+      playerHp: stats.playerHp,
+      upgradePoints: stats.upgradePoints,
+      paused: stats.paused,
+    },
+    skills: getRoleSkillKeys(role).map(key => ({
+      key: SKILL_DETAILS[role.id][key].keyLabel,
+      id: key,
+      name: role.skills[key].name,
+      tier: stats.skillLevels?.[key] || 1,
+      cooldown: Number((stats.skillCds?.[key] || 0).toFixed(2)),
+      description: SKILL_DETAILS[role.id][key].tiers[(stats.skillLevels?.[key] || 1) - 1],
+    })),
+  }
+}
+
+async function requestDeepSeekAssistant(endpoint, question, role, stats) {
+  const trimmedEndpoint = endpoint.trim()
+  if (!trimmedEndpoint) {
+    throw new Error('DeepSeek代理地址未配置')
+  }
+
+  const response = await fetch(trimmedEndpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(buildAssistantPayload(question, role, stats)),
+  })
+
+  if (!response.ok) {
+    throw new Error(`DeepSeek代理请求失败：${response.status}`)
+  }
+
+  const data = await response.json()
+  if (!data?.answer) {
+    throw new Error('DeepSeek代理没有返回 answer')
+  }
+
+  return data.answer
+}
+
 function answerSkillQuestion(question, role, stats) {
   if (!role?.skills) return ASSISTANT_IDLE_TEXT
 
@@ -286,12 +371,12 @@ function answerSkillQuestion(question, role, stats) {
   }
 
   if (text.includes('升阶') || text.includes('升级') || text.includes('200') || text.includes('3阶') || text.includes('三阶')) {
-    return `每 200 分获得 1 个升阶点，技能最高 3 阶。3 阶效果会明显夸张：冰修有五重冰月、强领域、F二段引爆；火修有巨型火球和更强清场。当前可用升阶点：${stats.upgradePoints}。`
+    return `每 200 分获得 1 个升阶点，技能最高 3 阶。3 阶效果会明显夸张：冰修有五重冰月、人剑合一三重剑痕、强领域、F二段引爆；火修有巨型火球和更强清场。当前可用升阶点：${stats.upgradePoints}。`
   }
 
   if (text.includes('先升') || text.includes('优先') || text.includes('加点') || text.includes('哪个强') || text.includes('推荐')) {
     if (role.id === 'bing') {
-      return '冰修推荐升阶顺序：先 Q 提高清怪和减速，再升 F 解锁更久冰封；如果主要守灵脉，就优先升 Q+E 领域，最后补 R 分身和空格天雷。'
+      return '冰修推荐升阶顺序：先 Q 提高清怪和减速，再升 G 人剑合一增强突围爆发；如果主要守灵脉，就优先升 Q+E 领域，最后补 F、R 分身和空格天雷。'
     }
     return '火修推荐升阶顺序：先 Q 大火球提高爆发，再升 R 增强贴身防守；如果敌人排成直线很多，就先升 E 光束，后期再把空格大火球拉到3阶。'
   }
@@ -303,6 +388,9 @@ function answerSkillQuestion(question, role, stats) {
   if (role.id === 'bing') {
     if (text.includes('q') || text.includes('半月') || text.includes('冰波') || text.includes('减速')) {
       return 'Q 半月霜波是冰修最常用的控场技能，放射半月形攻击波，命中会减速；升到3阶会变成多重冰月，适合先手拖住敌人。'
+    }
+    if (text.includes('人剑') || text.includes('合一') || text.includes('g') || text.includes('冲刺') || text.includes('突围')) {
+      return 'G 人剑合一会让冰修本体消失，化身飞剑 5 秒。期间移动更快，碰到敌人会造成剑气伤害并短暂冻结，适合突围和追杀。'
     }
     if (text.includes('e') || text.includes('万剑') || text.includes('剑阵') || text.includes('剑')) {
       return 'E 万剑归宗会展开剑阵并向四周射出冰剑，适合敌人包围你或靠近灵脉时释放；现在剑数量更少但单剑更强，画面也更清楚。'
@@ -325,7 +413,7 @@ function answerSkillQuestion(question, role, stats) {
     if (text.includes('冷却') || text.includes('cd') || text.includes('状态')) {
       return `当前冰修技能状态：${statusText}。`
     }
-    return `冰修技能：Q半月霜波减速，E万剑归宗清场，R冰影分身压制，F玄冰封界控场，Q+E冰魄领域守底线，空格九霄天雷全场打击。当前状态：${statusText}。`
+    return `冰修技能：Q半月霜波减速，E万剑归宗清场，G人剑合一化身飞剑，R冰影分身压制，F玄冰封界控场，Q+E冰魄领域守底线，空格九霄天雷全场打击。当前状态：${statusText}。`
   }
 
   if (text.includes('q') || text.includes('火球') || text.includes('大火球')) {
@@ -363,6 +451,7 @@ function buildStats(game) {
     upgradePoints: game.upgradePoints,
     nextUpgradeScore: game.nextUpgradeScore,
     iceDetonationWindow: game.iceDetonationWindow,
+    paused: game.paused,
   }
 }
 
@@ -393,6 +482,7 @@ function createGame(role) {
     },
     keys: new Set(),
     projectiles: [],
+    enemySpells: [],
     enemies: [],
     zones: [],
     clones: [],
@@ -402,6 +492,7 @@ function createGame(role) {
     charges: [],
     lightnings: [],
     swordAuras: [],
+    swordUnitySlashes: [],
     iceExplosions: [],
     particles: [],
     attackCd: 0,
@@ -412,6 +503,7 @@ function createGame(role) {
     nextUpgradeScore: 200,
     freezeTimer: 0,
     iceDetonationWindow: 0,
+    swordForm: null,
     screenFlash: 0,
     screenFlashKind: 'frost',
     spawnTimer: 1.2,
@@ -419,6 +511,7 @@ function createGame(role) {
     kills: 0,
     time: 0,
     uiTimer: 0,
+    paused: false,
     phase: 'playing',
   }
 }
@@ -450,6 +543,7 @@ function createEnemy(game) {
     maxHp: Math.round(type.hp * difficulty),
     speed: type.speed * (1 + Math.min(game.time / 220, 0.35)),
     contactCd: 0,
+    spellCd: 1.2 + Math.random() * 1.6,
     slowTimer: 0,
     slowFactor: 1,
     frozenTimer: 0,
@@ -481,6 +575,25 @@ function addLightning(game, x1, y1, x2, y2, color = '#e0f2fe') {
     color,
     life: 0.25,
     maxLife: 0.25,
+  })
+}
+
+function castEnemySpell(game, enemy) {
+  const target = game.player.hp > 0 && distance(enemy, game.player) < 520 ? game.player : game.core
+  const aim = normalize(target.x - enemy.x, target.y - enemy.y)
+  const typeBoost = enemy.minTime >= 58 ? 1.35 : enemy.minTime >= 32 ? 1.18 : 1
+
+  game.enemySpells.push({
+    x: enemy.x,
+    y: enemy.y,
+    vx: aim.x * 185 * typeBoost,
+    vy: aim.y * 185 * typeBoost,
+    radius: enemy.minTime >= 58 ? 11 : 8,
+    damage: enemy.minTime >= 58 ? 22 : enemy.minTime >= 32 ? 16 : 10,
+    life: 3.2,
+    maxLife: 3.2,
+    color: enemy.minTime >= 58 ? '#facc15' : enemy.minTime >= 32 ? '#67e8f9' : '#c084fc',
+    target: target === game.player ? 'player' : 'core',
   })
 }
 
@@ -624,6 +737,26 @@ function castIceE(game) {
 
   addParticle(game, game.player.x, game.player.y, '#93c5fd', level >= 3 ? 60 : 24)
   putSkillOnCooldown(game, 'e')
+}
+
+function castIceG(game) {
+  if (!isSkillReady(game, 'g')) return
+
+  const level = getSkillLevel(game, 'g')
+  game.swordForm = {
+    level,
+    life: 5,
+    maxLife: 5,
+    damageTick: 0,
+    trailTimer: 0,
+    angle: Math.atan2(game.mouse.y - game.player.y, game.mouse.x - game.player.x),
+  }
+  game.mouse.down = false
+  game.player.invulnerable = 5
+  game.screenFlash = 0.18
+  game.screenFlashKind = 'frost'
+  addParticle(game, game.player.x, game.player.y, '#e0f2fe', level >= 3 ? 70 : 36)
+  putSkillOnCooldown(game, 'g')
 }
 
 function castIceR(game) {
@@ -885,6 +1018,7 @@ function castSkill(game, key = 'e') {
   if (game.role.id === 'bing') {
     if (key === 'q') castIceQ(game)
     if (key === 'e') castIceE(game)
+    if (key === 'g') castIceG(game)
     if (key === 'r') castIceR(game)
     if (key === 'f') castIceF(game)
     if (key === 'qe') castIceDomain(game)
@@ -916,6 +1050,8 @@ function damageEnemy(game, enemy, damage, color) {
 }
 
 function updateGame(game, dt) {
+  if (game.paused) return
+
   game.time += dt
   game.attackCd = Math.max(0, game.attackCd - dt)
   game.skillCd = Math.max(0, game.skillCd - dt)
@@ -926,6 +1062,14 @@ function updateGame(game, dt) {
     game.skillCds[key] = Math.max(0, game.skillCds[key] - dt)
   }
 
+  if (game.swordForm) {
+    game.swordForm.life -= dt
+    game.swordForm.damageTick -= dt
+    game.swordForm.trailTimer -= dt
+    game.swordForm.angle = Math.atan2(game.mouse.y - game.player.y, game.mouse.x - game.player.x)
+    game.player.invulnerable = Math.max(game.player.invulnerable, 0.12)
+  }
+
   const movement = { x: 0, y: 0 }
   if (game.keys.has('w') || game.keys.has('arrowup')) movement.y -= 1
   if (game.keys.has('s') || game.keys.has('arrowdown')) movement.y += 1
@@ -934,16 +1078,60 @@ function updateGame(game, dt) {
 
   const direction = normalize(movement.x, movement.y)
   if (movement.x !== 0 || movement.y !== 0) {
-    game.player.x += direction.x * game.role.speed * dt
-    game.player.y += direction.y * game.role.speed * dt
+    const speedBoost = game.swordForm ? (game.swordForm.level >= 3 ? 1.95 : game.swordForm.level === 2 ? 1.7 : 1.48) : 1
+    game.player.x += direction.x * game.role.speed * speedBoost * dt
+    game.player.y += direction.y * game.role.speed * speedBoost * dt
   }
 
   game.player.x = clamp(game.player.x, 28, game.width - 28)
   game.player.y = clamp(game.player.y, 28, game.height - 28)
   game.player.invulnerable = Math.max(0, game.player.invulnerable - dt)
 
-  if (game.mouse.down) {
+  if (game.mouse.down && !game.swordForm) {
     normalAttack(game)
+  }
+
+  if (game.swordForm) {
+    const level = game.swordForm.level
+    const swordRadius = level >= 3 ? 36 : level === 2 ? 31 : 27
+    const swordDamage = (level >= 3 ? 205 : level === 2 ? 145 : 95) * dt
+
+    for (const enemy of game.enemies) {
+      if (distance(game.player, enemy) < swordRadius + enemy.radius) {
+        damageEnemy(game, enemy, swordDamage, '#e0f2fe')
+        enemy.frozenTimer = Math.max(enemy.frozenTimer || 0, level >= 3 ? 0.16 : 0.09)
+        enemy.slowTimer = Math.max(enemy.slowTimer || 0, 0.9)
+        enemy.slowFactor = 0.25
+      }
+    }
+
+    if (game.swordForm.trailTimer <= 0) {
+      const trailLength = level >= 3 ? 140 : 92
+      const angle = game.swordForm.angle
+      game.swordUnitySlashes.push({
+        x1: game.player.x - Math.cos(angle) * trailLength * 0.58,
+        y1: game.player.y - Math.sin(angle) * trailLength * 0.58,
+        x2: game.player.x + Math.cos(angle) * trailLength * 0.42,
+        y2: game.player.y + Math.sin(angle) * trailLength * 0.42,
+        angle,
+        width: level >= 3 ? 34 : 24,
+        life: level >= 3 ? 0.32 : 0.24,
+        maxLife: level >= 3 ? 0.32 : 0.24,
+        level,
+        color: level >= 3 ? '#f8fafc' : '#bfdbfe',
+      })
+      game.swordForm.trailTimer = level >= 3 ? 0.06 : 0.09
+    }
+
+    if (Math.random() < 0.36) {
+      addParticle(game, game.player.x, game.player.y, '#e0f2fe', level >= 3 ? 2 : 1)
+    }
+
+    if (game.swordForm.life <= 0) {
+      addParticle(game, game.player.x, game.player.y, '#bfdbfe', level >= 3 ? 48 : 26)
+      game.swordForm = null
+      game.player.invulnerable = Math.max(game.player.invulnerable, 0.28)
+    }
   }
 
   game.spawnTimer -= dt
@@ -957,6 +1145,12 @@ function updateGame(game, dt) {
     projectile.x += projectile.vx * dt
     projectile.y += projectile.vy * dt
     projectile.life -= dt
+  }
+
+  for (const spell of game.enemySpells) {
+    spell.x += spell.vx * dt
+    spell.y += spell.vy * dt
+    spell.life -= dt
   }
 
   for (const clone of game.clones) {
@@ -1071,6 +1265,7 @@ function updateGame(game, dt) {
 
   for (const enemy of game.enemies) {
     enemy.contactCd = Math.max(0, enemy.contactCd - dt)
+    enemy.spellCd = Math.max(0, enemy.spellCd - dt)
     enemy.slowTimer = Math.max(0, enemy.slowTimer - dt)
     enemy.frozenTimer = Math.max(0, enemy.frozenTimer - dt)
 
@@ -1078,6 +1273,11 @@ function updateGame(game, dt) {
     const stateFactor = enemy.frozenTimer > 0 ? 0 : enemy.slowTimer > 0 ? enemy.slowFactor : 1
     enemy.x += toCore.x * enemy.speed * stateFactor * dt
     enemy.y += toCore.y * enemy.speed * stateFactor * dt
+
+    if (stateFactor > 0 && enemy.spellCd <= 0 && distance(enemy, game.player) < 560) {
+      castEnemySpell(game, enemy)
+      enemy.spellCd = Math.max(1.25, 3.2 - game.time * 0.012) + Math.random() * 1.2
+    }
 
     if (stateFactor > 0 && distance(enemy, game.core) < enemy.radius + game.core.radius) {
       game.core.hp -= enemy.damage * dt
@@ -1133,8 +1333,27 @@ function updateGame(game, dt) {
     }
   }
 
+  for (const spell of game.enemySpells) {
+    if (spell.life <= 0) continue
+
+    if (!game.swordForm && distance(spell, game.player) < spell.radius + game.player.radius) {
+      game.player.hp -= spell.damage * game.role.damageTaken
+      game.player.invulnerable = 0.2
+      spell.life = 0
+      addParticle(game, game.player.x, game.player.y, spell.color, 10)
+      continue
+    }
+
+    if (distance(spell, game.core) < spell.radius + game.core.radius) {
+      game.core.hp -= spell.damage * 0.72
+      spell.life = 0
+      addParticle(game, game.core.x, game.core.y, spell.color, 10)
+    }
+  }
+
   game.enemies = game.enemies.filter(enemy => enemy.hp > 0)
   game.projectiles = game.projectiles.filter(projectile => projectile.life > 0)
+  game.enemySpells = game.enemySpells.filter(spell => spell.life > 0)
   game.zones = game.zones.filter(zone => zone.life > 0)
   game.clones = game.clones.filter(clone => clone.life > 0)
   game.beams = game.beams.filter(beam => beam.life > 0)
@@ -1144,6 +1363,10 @@ function updateGame(game, dt) {
   game.swordAuras = (game.swordAuras || []).filter(aura => {
     aura.life -= dt
     return aura.life > 0
+  })
+  game.swordUnitySlashes = (game.swordUnitySlashes || []).filter(slash => {
+    slash.life -= dt
+    return slash.life > 0
   })
   game.lightnings = game.lightnings.filter(lightning => {
     lightning.life -= dt
@@ -1317,6 +1540,58 @@ function drawSwordProjectile(ctx, projectile) {
 
   ctx.fillStyle = '#38bdf8'
   ctx.fillRect(-length * 0.34, -width * 1.18, 4, width * 2.36)
+  ctx.restore()
+}
+
+function drawSwordUnitySlash(ctx, slash) {
+  const alpha = clamp(slash.life / slash.maxLife, 0, 1)
+  const progress = 1 - alpha
+  const width = slash.width * (0.62 + progress * 0.72)
+  const dx = slash.x2 - slash.x1
+  const dy = slash.y2 - slash.y1
+  const length = Math.hypot(dx, dy)
+
+  ctx.save()
+  ctx.translate(slash.x1, slash.y1)
+  ctx.rotate(slash.angle)
+  ctx.globalAlpha = alpha
+  ctx.shadowBlur = slash.level >= 3 ? 34 : 24
+  ctx.shadowColor = '#e0f2fe'
+
+  const gradient = ctx.createLinearGradient(0, 0, length, 0)
+  gradient.addColorStop(0, 'rgba(125, 211, 252, 0)')
+  gradient.addColorStop(0.18, `rgba(224, 242, 254, ${0.58 * alpha})`)
+  gradient.addColorStop(0.5, `rgba(248, 250, 252, ${0.95 * alpha})`)
+  gradient.addColorStop(0.82, `rgba(125, 211, 252, ${0.5 * alpha})`)
+  gradient.addColorStop(1, 'rgba(125, 211, 252, 0)')
+
+  ctx.fillStyle = gradient
+  ctx.beginPath()
+  ctx.moveTo(0, -width * 0.32)
+  ctx.lineTo(length * 0.92, -width * 0.58)
+  ctx.lineTo(length, 0)
+  ctx.lineTo(length * 0.92, width * 0.58)
+  ctx.lineTo(0, width * 0.32)
+  ctx.closePath()
+  ctx.fill()
+
+  ctx.strokeStyle = `rgba(240, 249, 255, ${0.9 * alpha})`
+  ctx.lineWidth = Math.max(2, width * 0.12)
+  ctx.beginPath()
+  ctx.moveTo(length * 0.08, 0)
+  ctx.lineTo(length * 0.98, 0)
+  ctx.stroke()
+
+  for (let i = 0; i < 5; i += 1) {
+    const t = (i + 1) / 6
+    ctx.strokeStyle = `rgba(186, 230, 253, ${0.34 * alpha})`
+    ctx.lineWidth = 1.5
+    ctx.beginPath()
+    ctx.moveTo(length * t, -width * 0.72)
+    ctx.lineTo(length * (t + 0.08), width * 0.66)
+    ctx.stroke()
+  }
+
   ctx.restore()
 }
 
@@ -1538,6 +1813,10 @@ function drawGame(ctx, game) {
     drawSwordAura(ctx, aura, game.time)
   }
 
+  for (const slash of game.swordUnitySlashes || []) {
+    drawSwordUnitySlash(ctx, slash)
+  }
+
   for (const zone of game.zones) {
     const alpha = clamp(zone.life / zone.maxLife, 0, 1)
     const isFrostZone = zone.kind === 'frost'
@@ -1714,6 +1993,24 @@ function drawGame(ctx, game) {
     }
   }
 
+  for (const spell of game.enemySpells) {
+    const alpha = clamp(spell.life / spell.maxLife, 0, 1)
+    ctx.save()
+    ctx.globalAlpha = 0.62 + alpha * 0.28
+    ctx.shadowBlur = spell.target === 'player' ? 18 : 24
+    ctx.shadowColor = spell.color
+    ctx.fillStyle = spell.color
+    ctx.beginPath()
+    ctx.arc(spell.x, spell.y, spell.radius, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.72)'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.arc(spell.x, spell.y, spell.radius + 4, 0, Math.PI * 2)
+    ctx.stroke()
+    ctx.restore()
+  }
+
   for (const enemy of game.enemies) {
     ctx.fillStyle = enemy.color
     ctx.beginPath()
@@ -1790,16 +2087,50 @@ function drawGame(ctx, game) {
     ctx.restore()
   }
 
-  const playerAlpha = game.player.invulnerable > 0 ? 0.55 : 1
-  ctx.globalAlpha = playerAlpha
-  ctx.fillStyle = game.role.color
-  ctx.beginPath()
-  ctx.arc(game.player.x, game.player.y, game.player.radius, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.strokeStyle = game.role.accent
-  ctx.lineWidth = 4
-  ctx.stroke()
-  ctx.globalAlpha = 1
+  if (game.swordForm) {
+    const angle = game.swordForm.angle
+    const level = game.swordForm.level
+    const swordLength = level >= 3 ? 86 : level === 2 ? 74 : 64
+    const swordWidth = level >= 3 ? 18 : 15
+
+    ctx.save()
+    ctx.translate(game.player.x, game.player.y)
+    ctx.rotate(angle)
+    ctx.shadowBlur = level >= 3 ? 32 : 24
+    ctx.shadowColor = '#e0f2fe'
+    ctx.fillStyle = '#e0f2fe'
+    ctx.strokeStyle = '#f8fafc'
+    ctx.lineWidth = 3
+    ctx.beginPath()
+    ctx.moveTo(swordLength * 0.58, 0)
+    ctx.lineTo(-swordLength * 0.24, swordWidth)
+    ctx.lineTo(-swordLength * 0.42, swordWidth * 0.28)
+    ctx.lineTo(-swordLength * 0.42, -swordWidth * 0.28)
+    ctx.lineTo(-swordLength * 0.24, -swordWidth)
+    ctx.closePath()
+    ctx.fill()
+    ctx.stroke()
+    ctx.fillStyle = '#38bdf8'
+    ctx.fillRect(-swordLength * 0.46, -swordWidth * 1.25, 7, swordWidth * 2.5)
+    ctx.strokeStyle = 'rgba(186, 230, 253, 0.5)'
+    ctx.lineWidth = 8
+    ctx.beginPath()
+    ctx.moveTo(-swordLength * 0.78, 0)
+    ctx.lineTo(-swordLength * 0.35, 0)
+    ctx.stroke()
+    ctx.restore()
+  } else {
+    const playerAlpha = game.player.invulnerable > 0 ? 0.55 : 1
+    ctx.globalAlpha = playerAlpha
+    ctx.fillStyle = game.role.color
+    ctx.beginPath()
+    ctx.arc(game.player.x, game.player.y, game.player.radius, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.strokeStyle = game.role.accent
+    ctx.lineWidth = 4
+    ctx.stroke()
+    ctx.globalAlpha = 1
+  }
 
   const aim = normalize(game.mouse.x - game.player.x, game.mouse.y - game.player.y)
   ctx.strokeStyle = 'rgba(248, 250, 252, 0.5)'
@@ -1852,6 +2183,19 @@ function drawGame(ctx, game) {
     ctx.fillStyle = skillReady ? '#bbf7d0' : '#fed7aa'
     ctx.fillText(skillReady ? `${game.role.skill}: 可释放` : `${game.role.skill}: ${game.skillCd.toFixed(1)}s`, game.width - 210, 101)
   }
+
+  if (game.paused) {
+    ctx.save()
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.58)'
+    ctx.fillRect(0, 0, game.width, game.height)
+    ctx.fillStyle = '#f8fafc'
+    ctx.textAlign = 'center'
+    ctx.font = 'bold 34px sans-serif'
+    ctx.fillText('已暂停', game.width / 2, game.height / 2 - 14)
+    ctx.font = '18px sans-serif'
+    ctx.fillText('按 P 继续守护灵脉', game.width / 2, game.height / 2 + 24)
+    ctx.restore()
+  }
 }
 
 function getPointerPosition(event, canvas) {
@@ -1870,6 +2214,9 @@ export default function SpiritVeinGame() {
   const [stats, setStats] = useState(INITIAL_STATS)
   const [assistantQuestion, setAssistantQuestion] = useState('')
   const [assistantAnswer, setAssistantAnswer] = useState(ASSISTANT_IDLE_TEXT)
+  const [assistantStatus, setAssistantStatus] = useState(ASSISTANT_API_IDLE_TEXT)
+  const [assistantBusy, setAssistantBusy] = useState(false)
+  const [assistantEndpoint, setAssistantEndpoint] = useState(getStoredAssistantEndpoint)
 
   const currentRole = selectedRole ? ROLES[selectedRole] : null
   const assistantQuestions = currentRole?.id === 'huo' ? FIRE_ASSISTANT_QUESTIONS : ICE_ASSISTANT_QUESTIONS
@@ -1882,6 +2229,7 @@ export default function SpiritVeinGame() {
     setStats(buildStats(game))
     setAssistantQuestion('')
     setAssistantAnswer(ASSISTANT_IDLE_TEXT)
+    setAssistantStatus(assistantEndpoint ? 'DeepSeek API：已配置代理地址' : ASSISTANT_API_IDLE_TEXT)
     setPhase('playing')
   }
 
@@ -1892,6 +2240,7 @@ export default function SpiritVeinGame() {
     setStats(INITIAL_STATS)
     setAssistantQuestion('')
     setAssistantAnswer(ASSISTANT_IDLE_TEXT)
+    setAssistantStatus(assistantEndpoint ? 'DeepSeek API：已配置代理地址' : ASSISTANT_API_IDLE_TEXT)
   }
 
   function restartGame() {
@@ -1900,17 +2249,35 @@ export default function SpiritVeinGame() {
     }
   }
 
-  function askAssistant(question) {
+  async function askAssistant(question) {
     const trimmedQuestion = question.trim()
-    if (!trimmedQuestion || !currentRole) return
+    if (!trimmedQuestion || !currentRole || assistantBusy) return
 
     setAssistantQuestion(trimmedQuestion)
-    setAssistantAnswer(answerSkillQuestion(trimmedQuestion, currentRole, stats))
+    setAssistantBusy(true)
+    setAssistantStatus('DeepSeek API：请求中...')
+
+    try {
+      const answer = await requestDeepSeekAssistant(assistantEndpoint, trimmedQuestion, currentRole, stats)
+      setAssistantAnswer(answer)
+      setAssistantStatus('DeepSeek API：真实接口已返回')
+    } catch (error) {
+      setAssistantAnswer(answerSkillQuestion(trimmedQuestion, currentRole, stats))
+      setAssistantStatus(`${error.message}，已使用本地兜底回答`)
+    } finally {
+      setAssistantBusy(false)
+    }
   }
 
   function submitAssistantQuestion(event) {
     event.preventDefault()
     askAssistant(assistantQuestion)
+  }
+
+  function updateAssistantEndpoint(endpoint) {
+    setAssistantEndpoint(endpoint)
+    saveAssistantEndpoint(endpoint)
+    setAssistantStatus(endpoint.trim() ? 'DeepSeek API：已配置代理地址' : ASSISTANT_API_IDLE_TEXT)
   }
 
   function syncStatsFromGame() {
@@ -1947,6 +2314,11 @@ export default function SpiritVeinGame() {
     updatePointer(event)
     const game = gameRef.current
     if (!game || phase !== 'playing') return
+    if (game.paused) return
+    if (game.swordForm) {
+      game.mouse.down = false
+      return
+    }
 
     if (event.button === 2) {
       castSkill(game, 'e')
@@ -1979,12 +2351,21 @@ export default function SpiritVeinGame() {
       if (isTextEntryTarget(event.target)) return
 
       const key = event.key.toLowerCase()
-      const controlledKeys = ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ', 'q', 'e', 'r', 'f']
+      const controlledKeys = ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ', 'q', 'e', 'g', 'r', 'f', 'p']
       if (controlledKeys.includes(key)) {
         event.preventDefault()
       }
+      if (key === 'p') {
+        game.paused = !game.paused
+        game.mouse.down = false
+        game.keys.clear()
+        setStats(buildStats(game))
+        return
+      }
       game.keys.add(key)
-      if (event.repeat && ['q', 'e', 'r', 'f', ' '].includes(key)) return
+      if (game.paused) return
+      if (game.swordForm && ['q', 'e', 'g', 'r', 'f', ' '].includes(key)) return
+      if (event.repeat && ['q', 'e', 'g', 'r', 'f', ' '].includes(key)) return
       if (game.role.id === 'bing' && (key === 'q' || key === 'e') && game.keys.has('q') && game.keys.has('e')) {
         castSkill(game, 'qe')
         return
@@ -1994,6 +2375,9 @@ export default function SpiritVeinGame() {
       }
       if (key === 'e') {
         castSkill(game, 'e')
+      }
+      if (key === 'g') {
+        castSkill(game, 'g')
       }
       if (key === 'r') {
         castSkill(game, 'r')
@@ -2018,7 +2402,9 @@ export default function SpiritVeinGame() {
       updateGame(game, dt)
       drawGame(ctx, game)
 
-      game.uiTimer -= dt
+      if (!game.paused) {
+        game.uiTimer -= dt
+      }
       if (game.uiTimer <= 0 || game.phase === 'gameover') {
         setStats(buildStats(game))
         game.uiTimer = 0.12
@@ -2097,6 +2483,10 @@ export default function SpiritVeinGame() {
               <strong>{stats.time}s</strong>
             </div>
             <div>
+              <span>状态</span>
+              <strong>{stats.paused ? '暂停中' : '战斗中'}</strong>
+            </div>
+            <div>
               <span>{currentRole.skills ? '大招' : '仙术'}</span>
               <strong>
                 {currentRole.skills
@@ -2142,6 +2532,7 @@ export default function SpiritVeinGame() {
                   <span>器灵助手</span>
                   <strong>问技能</strong>
                   <p>{assistantAnswer}</p>
+                  <small>{assistantStatus}</small>
                 </div>
                 <form className="assistant-form" onSubmit={submitAssistantQuestion}>
                   <input
@@ -2150,11 +2541,22 @@ export default function SpiritVeinGame() {
                     placeholder="随便问：被围住怎么办？先升哪个？E怎么用？"
                     aria-label="向器灵助手询问技能"
                   />
-                  <button type="submit">询问</button>
+                  <button type="submit" disabled={assistantBusy}>
+                    {assistantBusy ? '请求中' : '询问'}
+                  </button>
                 </form>
+                <details className="assistant-api-settings">
+                  <summary>DeepSeek API</summary>
+                  <input
+                    value={assistantEndpoint}
+                    onChange={event => updateAssistantEndpoint(event.target.value)}
+                    placeholder="代理地址，例如 https://your-site.vercel.app/api/deepseek-skill-agent"
+                    aria-label="DeepSeek代理地址"
+                  />
+                </details>
                 <div className="assistant-quick">
                   {assistantQuestions.map(question => (
-                    <button type="button" key={question} onClick={() => askAssistant(question)}>
+                    <button type="button" key={question} disabled={assistantBusy} onClick={() => askAssistant(question)}>
                       {question}
                     </button>
                   ))}
@@ -2194,9 +2596,10 @@ export default function SpiritVeinGame() {
             <span>鼠标左键施放普攻</span>
             <span>
               {currentRole.id === 'bing'
-                ? '冰修：Q 冰波 · E 剑阵 · Q+E 冰场 · R 分身 · F 冰封 · 空格天雷'
+                ? '冰修：Q 冰波 · E 剑阵 · G 人剑合一5秒 · Q+E 冰场 · R 分身 · F 冰封 · 空格天雷'
                 : '火修：Q 大火球 · E 光束 · R 环绕火球 · 空格蓄力火球'}
             </span>
+            <span>P 暂停 / 继续</span>
             <span>鼠标右键释放 E 技能</span>
           </div>
 
