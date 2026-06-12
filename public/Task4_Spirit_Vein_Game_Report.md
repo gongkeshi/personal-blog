@@ -45,7 +45,7 @@ At the same time, the xianxia theme gives the game a more personal and memorable
 | Q Skill | 半月霜波: releases a crescent-shaped ice wave and slows enemies on hit |
 | E Skill | 万剑归宗: releases multiple radial sword projectiles |
 | R Skill | 冰影分身: summons two clones that attack toward the mouse direction |
-| F Skill | 玄冰封界: freezes all enemies with frost rings, ice-crystal effects, and area control |
+| F Skill | 玄冰封界: directly freezes all enemies without heavy pre-cast effects |
 | Ultimate | 九霄天雷: calls full-screen lightning strikes to damage all enemies |
 | Growth System | Each skill can be upgraded from tier 1 to tier 3 using score-based upgrade points |
 | Strength | Strong control, crowd management, and defensive utility |
@@ -58,7 +58,7 @@ At the same time, the xianxia theme gives the game a more personal and memorable
 | Q 半月霜波 | One crescent wave that slows enemies | Two wider crescent waves | Five large ice moons with heavy slow and short freeze |
 | E 万剑归宗 | One radial sword wave | Two radial sword layers | Three full-screen sword storms with lightning visuals |
 | R 冰影分身 | Two clones attacking forward | Three stronger clones | Six clones creating a bullet-screen effect |
-| F 玄冰封界 | Freeze all enemies for 2 seconds with frost burst effects | Longer freeze, stronger frost damage, and more ice-crystal visuals | Global ice seal with large frost fields and exaggerated freezing effects |
+| F 玄冰封界 | Directly freeze all enemies for 2 seconds | Longer direct freeze | Long global freeze with minimal visual overhead |
 | Space 九霄天雷 | Full-screen lightning strikes all enemies | Stronger chain lightning and higher damage | Thunderstorm-like global lightning with multiple heavy strikes |
 
 ### 3.2 火修

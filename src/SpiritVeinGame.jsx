@@ -37,7 +37,7 @@ const SKILL_DETAILS = {
     f: {
       keyLabel: 'F',
       name: '玄冰封界',
-      tiers: ['全场冰封 2 秒，爆开霜环', '冰封更久并造成碎冰伤害', '极寒封界，大片冰晶持续控场'],
+      tiers: ['全场直接冰封 2 秒', '直接冰封更久', '极寒定身，长时间全场冰封'],
     },
     space: {
       keyLabel: '空格',
@@ -281,7 +281,6 @@ function createGame(role) {
     magmaJets: [],
     charges: [],
     lightnings: [],
-    frostBursts: [],
     particles: [],
     attackCd: 0,
     skillCd: 0,
@@ -359,25 +358,6 @@ function addLightning(game, x1, y1, x2, y2, color = '#e0f2fe') {
     color,
     life: 0.25,
     maxLife: 0.25,
-  })
-}
-
-function addFrostBurst(game, x, y, radius, options = {}) {
-  const life = options.life || 0.78
-  const shardCount = options.shards || 14
-  game.frostBursts.push({
-    x,
-    y,
-    radius,
-    life,
-    maxLife: life,
-    color: options.color || '#bae6fd',
-    rings: options.rings || 3,
-    shards: Array.from({ length: shardCount }, () => ({
-      angle: Math.random() * Math.PI * 2,
-      distance: radius * (0.35 + Math.random() * 0.68),
-      length: radius * (0.14 + Math.random() * 0.22),
-    })),
   })
 }
 
@@ -540,62 +520,13 @@ function castIceF(game) {
 
   const level = getSkillLevel(game, 'f')
   const freezeDuration = level >= 3 ? 4.6 : level === 2 ? 3.2 : 2
-  const frostDamage = level >= 3 ? 115 : level === 2 ? 58 : 18
-  const burstRadius = level >= 3 ? 78 : level === 2 ? 58 : 42
 
   game.freezeTimer = Math.max(game.freezeTimer, freezeDuration)
-  game.screenFlash = 0.55
-  game.screenFlashKind = 'frost'
-
-  addFrostBurst(game, game.player.x, game.player.y, level >= 3 ? 170 : 118, {
-    life: level >= 3 ? 1.15 : 0.88,
-    shards: level >= 3 ? 42 : 26,
-    rings: level >= 3 ? 5 : 4,
-  })
-  addFrostBurst(game, game.core.x, game.core.y, level >= 3 ? 145 : 96, {
-    life: 0.95,
-    shards: level >= 3 ? 34 : 20,
-  })
 
   for (const enemy of game.enemies) {
     enemy.frozenTimer = Math.max(enemy.frozenTimer || 0, freezeDuration)
-    enemy.slowTimer = Math.max(enemy.slowTimer || 0, freezeDuration + 0.8)
-    enemy.slowFactor = level >= 3 ? 0.2 : 0.34
-    damageEnemy(game, enemy, frostDamage, '#bfdbfe')
-    addFrostBurst(game, enemy.x, enemy.y, burstRadius, {
-      life: level >= 3 ? 0.95 : 0.68,
-      shards: level >= 3 ? 22 : 13,
-    })
-    addParticle(game, enemy.x, enemy.y, '#e0f2fe', level >= 3 ? 18 : 9)
   }
 
-  const fieldBursts = level >= 3 ? 12 : level === 2 ? 7 : 4
-  for (let i = 0; i < fieldBursts; i += 1) {
-    addFrostBurst(game, 80 + Math.random() * (game.width - 160), 55 + Math.random() * (game.height - 170), level >= 3 ? 92 : 58, {
-      life: 0.7 + Math.random() * 0.3,
-      shards: level >= 3 ? 22 : 14,
-    })
-  }
-
-  if (level >= 3) {
-    for (let i = 0; i < 4; i += 1) {
-      game.zones.push({
-        kind: 'frost',
-        x: 120 + i * 240,
-        y: game.height / 2,
-        radius: 118,
-        life: 4,
-        maxLife: 4,
-        dps: 34,
-        freezeDuration: 0.25,
-        slowDuration: 0.8,
-        slowFactor: 0.25,
-        color: '#38bdf8',
-      })
-    }
-  }
-
-  addParticle(game, game.core.x, game.core.y, '#dbeafe', level >= 3 ? 72 : 28)
   putSkillOnCooldown(game, 'f')
 }
 
@@ -979,10 +910,6 @@ function updateGame(game, dt) {
     lightning.life -= dt
     return lightning.life > 0
   })
-  game.frostBursts = game.frostBursts.filter(burst => {
-    burst.life -= dt
-    return burst.life > 0
-  })
 
   for (const particle of game.particles) {
     particle.x += particle.vx * dt
@@ -1032,46 +959,6 @@ function drawLightning(ctx, lightning) {
   }
   ctx.lineTo(lightning.x2, lightning.y2)
   ctx.stroke()
-  ctx.restore()
-}
-
-function drawFrostBurst(ctx, burst) {
-  const alpha = clamp(burst.life / burst.maxLife, 0, 1)
-  const progress = 1 - alpha
-  ctx.save()
-  ctx.globalAlpha = 0.2 + alpha * 0.62
-  ctx.shadowBlur = 22
-  ctx.shadowColor = burst.color
-
-  ctx.fillStyle = `rgba(186, 230, 253, ${0.06 + alpha * 0.12})`
-  ctx.beginPath()
-  ctx.arc(burst.x, burst.y, burst.radius * (0.45 + progress * 0.55), 0, Math.PI * 2)
-  ctx.fill()
-
-  for (let i = 0; i < burst.rings; i += 1) {
-    const ringRatio = (i + 1) / burst.rings
-    ctx.strokeStyle = i % 2 === 0 ? burst.color : '#e0f2fe'
-    ctx.lineWidth = Math.max(1.5, 4 - i * 0.6)
-    ctx.beginPath()
-    ctx.arc(burst.x, burst.y, burst.radius * ringRatio * (0.42 + progress * 0.62), 0, Math.PI * 2)
-    ctx.stroke()
-  }
-
-  ctx.strokeStyle = '#f0f9ff'
-  ctx.lineWidth = 2
-  for (const shard of burst.shards) {
-    const startDistance = shard.distance * (0.38 + progress * 0.62)
-    const endDistance = startDistance + shard.length * alpha
-    const sx = burst.x + Math.cos(shard.angle) * startDistance
-    const sy = burst.y + Math.sin(shard.angle) * startDistance
-    const ex = burst.x + Math.cos(shard.angle) * endDistance
-    const ey = burst.y + Math.sin(shard.angle) * endDistance
-    ctx.beginPath()
-    ctx.moveTo(sx, sy)
-    ctx.lineTo(ex, ey)
-    ctx.stroke()
-  }
-
   ctx.restore()
 }
 
@@ -1197,10 +1084,6 @@ function drawGame(ctx, game) {
 
   for (const lightning of game.lightnings) {
     drawLightning(ctx, lightning)
-  }
-
-  for (const burst of game.frostBursts) {
-    drawFrostBurst(ctx, burst)
   }
 
   for (const beam of game.beams) {
