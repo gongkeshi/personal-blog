@@ -543,7 +543,7 @@ function createEnemy(game) {
     maxHp: Math.round(type.hp * difficulty),
     speed: type.speed * (1 + Math.min(game.time / 220, 0.35)),
     contactCd: 0,
-    spellCd: 1.2 + Math.random() * 1.6,
+    spellCd: 2.2 + Math.random() * 2.2,
     slowTimer: 0,
     slowFactor: 1,
     frozenTimer: 0,
@@ -579,17 +579,17 @@ function addLightning(game, x1, y1, x2, y2, color = '#e0f2fe') {
 }
 
 function castEnemySpell(game, enemy) {
-  const target = game.player.hp > 0 && distance(enemy, game.player) < 520 ? game.player : game.core
+  const target = game.player.hp > 0 && distance(enemy, game.player) < 480 ? game.player : game.core
   const aim = normalize(target.x - enemy.x, target.y - enemy.y)
-  const typeBoost = enemy.minTime >= 58 ? 1.35 : enemy.minTime >= 32 ? 1.18 : 1
+  const typeBoost = enemy.minTime >= 58 ? 1.16 : enemy.minTime >= 32 ? 1.08 : 1
 
   game.enemySpells.push({
     x: enemy.x,
     y: enemy.y,
-    vx: aim.x * 185 * typeBoost,
-    vy: aim.y * 185 * typeBoost,
-    radius: enemy.minTime >= 58 ? 11 : 8,
-    damage: enemy.minTime >= 58 ? 22 : enemy.minTime >= 32 ? 16 : 10,
+    vx: aim.x * 145 * typeBoost,
+    vy: aim.y * 145 * typeBoost,
+    radius: enemy.minTime >= 58 ? 9 : 7,
+    damage: enemy.minTime >= 58 ? 14 : enemy.minTime >= 32 ? 10 : 6,
     life: 3.2,
     maxLife: 3.2,
     color: enemy.minTime >= 58 ? '#facc15' : enemy.minTime >= 32 ? '#67e8f9' : '#c084fc',
@@ -1274,9 +1274,9 @@ function updateGame(game, dt) {
     enemy.x += toCore.x * enemy.speed * stateFactor * dt
     enemy.y += toCore.y * enemy.speed * stateFactor * dt
 
-    if (stateFactor > 0 && enemy.spellCd <= 0 && distance(enemy, game.player) < 560) {
+    if (stateFactor > 0 && enemy.spellCd <= 0 && distance(enemy, game.player) < 500) {
       castEnemySpell(game, enemy)
-      enemy.spellCd = Math.max(1.25, 3.2 - game.time * 0.012) + Math.random() * 1.2
+      enemy.spellCd = Math.max(2.75, 5.2 - game.time * 0.007) + Math.random() * 1.8
     }
 
     if (stateFactor > 0 && distance(enemy, game.core) < enemy.radius + game.core.radius) {
@@ -1338,14 +1338,14 @@ function updateGame(game, dt) {
 
     if (!game.swordForm && distance(spell, game.player) < spell.radius + game.player.radius) {
       game.player.hp -= spell.damage * game.role.damageTaken
-      game.player.invulnerable = 0.2
+      game.player.invulnerable = 0.32
       spell.life = 0
       addParticle(game, game.player.x, game.player.y, spell.color, 10)
       continue
     }
 
     if (distance(spell, game.core) < spell.radius + game.core.radius) {
-      game.core.hp -= spell.damage * 0.72
+      game.core.hp -= spell.damage * 0.48
       spell.life = 0
       addParticle(game, game.core.x, game.core.y, spell.color, 10)
     }
