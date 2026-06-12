@@ -12,6 +12,7 @@ const INITIAL_SKILL_COOLDOWNS = {
   space: 0,
 }
 const SKILL_KEYS = ['q', 'e', 'g', 'r', 'f', 'qe', 'space']
+const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions'
 const INITIAL_SKILL_LEVELS = {
   q: 1,
   e: 1,
@@ -22,7 +23,7 @@ const INITIAL_SKILL_LEVELS = {
   space: 1,
 }
 const ASSISTANT_IDLE_TEXT = '我是器灵助手 / Spirit Assistant：可以自由问技能、连招、升阶、保命、守灵脉和当前冷却。'
-const ASSISTANT_API_IDLE_TEXT = 'DeepSeek API：请先填入代理地址 / Add a proxy endpoint, or deploy api/deepseek-skill-agent.js.'
+const ASSISTANT_API_IDLE_TEXT = 'DeepSeek API：可填本机 Key 或代理地址 / Add a local key or proxy endpoint.'
 const ICE_ASSISTANT_QUESTIONS = [
   '人剑合一怎么用？ / How do I use Sword Unity?',
   '冰修怎么连招？ / What is the ice combo?',
@@ -317,6 +318,14 @@ function getStoredAssistantEndpoint() {
   }
 }
 
+function getStoredAssistantApiKey() {
+  try {
+    return window.localStorage.getItem('deepseekBrowserApiKey') || ''
+  } catch {
+    return ''
+  }
+}
+
 function saveAssistantEndpoint(endpoint) {
   try {
     if (endpoint.trim()) {
@@ -327,6 +336,24 @@ function saveAssistantEndpoint(endpoint) {
   } catch {
     // Local storage can be unavailable in restricted browser modes.
   }
+}
+
+function saveAssistantApiKey(apiKey) {
+  try {
+    if (apiKey.trim()) {
+      window.localStorage.setItem('deepseekBrowserApiKey', apiKey.trim())
+    } else {
+      window.localStorage.removeItem('deepseekBrowserApiKey')
+    }
+  } catch {
+    // Local storage can be unavailable in restricted browser modes.
+  }
+}
+
+function getAssistantApiStatus(apiKey, endpoint) {
+  if (apiKey.trim()) return 'DeepSeek API：已配置本机 Key / Local browser key configured'
+  if (endpoint.trim()) return 'DeepSeek API：已配置代理地址 / Proxy configured'
+  return ASSISTANT_API_IDLE_TEXT
 }
 
 function spentUpgradePoints(skillLevels) {
@@ -394,6 +421,73 @@ function buildAssistantPayload(question, role, stats) {
       description: SKILL_DETAILS[role.id][key].tiers[(stats.skillLevels?.[key] || 1) - 1],
     })),
   }
+}
+
+function buildAssistantPrompt(payload) {
+  const skills = Array.isArray(payload.skills)
+    ? payload.skills.map(skill => `${skill.key} ${skill.name}: ${skill.tier}阶, 冷却 ${skill.cooldown}s, ${skill.description}`).join('\n')
+    : '无技能数据'
+
+  return [
+    '你是一个中文游戏内器灵助手，帮助玩家理解修仙小游戏的技能和当前局势。',
+    '回答必须简短、直接、适合游戏内显示。不要编造不存在的键位或技能。',
+    '如果玩家问操作建议，要结合当前血量、灵脉血量、冷却、技能阶数回答。',
+    '',
+    `角色：${payload.role?.name || '未知'} / ${payload.role?.title || ''}`,
+    `角色特点：${payload.role?.trait || ''}`,
+    `状态：分数 ${payload.gameState?.score}, 击破 ${payload.gameState?.kills}, 时间 ${payload.gameState?.time}s, 灵脉 HP ${payload.gameState?.coreHp}, 角色 HP ${payload.gameState?.playerHp}, 升阶点 ${payload.gameState?.upgradePoints}`,
+    `技能：\n${skills}`,
+    '',
+    `玩家问题：${payload.question}`,
+  ].join('\n')
+}
+
+async function requestDeepSeekAssistantWithKey(apiKey, question, role, stats) {
+  const trimmedApiKey = apiKey.trim()
+  if (!trimmedApiKey) {
+    throw new Error('DeepSeek本机 Key 未配置')
+  }
+
+  const payload = buildAssistantPayload(question, role, stats)
+  let response
+  try {
+    response = await fetch(DEEPSEEK_API_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${trimmedApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        temperature: 0.6,
+        max_tokens: 220,
+        messages: [
+          {
+            role: 'system',
+            content: '你是一个修仙小游戏的游戏内助手，只回答与当前游戏技能、局势、操作建议相关的问题。使用中文，最多 4 句话。',
+          },
+          {
+            role: 'user',
+            content: buildAssistantPrompt(payload),
+          },
+        ],
+      }),
+    })
+  } catch {
+    throw new Error('DeepSeek浏览器直连失败，可能被跨域拦截')
+  }
+
+  if (!response.ok) {
+    throw new Error(`DeepSeek直连请求失败：${response.status}`)
+  }
+
+  const data = await response.json()
+  const answer = data?.choices?.[0]?.message?.content?.trim()
+  if (!answer) {
+    throw new Error('DeepSeek直连没有返回 answer')
+  }
+
+  return answer
 }
 
 async function requestDeepSeekAssistant(endpoint, question, role, stats) {
@@ -2295,6 +2389,7 @@ export default function SpiritVeinGame() {
   const [assistantStatus, setAssistantStatus] = useState(ASSISTANT_API_IDLE_TEXT)
   const [assistantBusy, setAssistantBusy] = useState(false)
   const [assistantEndpoint, setAssistantEndpoint] = useState(getStoredAssistantEndpoint)
+  const [assistantApiKey, setAssistantApiKey] = useState(getStoredAssistantApiKey)
 
   const currentRole = selectedRole ? ROLES[selectedRole] : null
   const assistantQuestions = currentRole?.id === 'huo' ? FIRE_ASSISTANT_QUESTIONS : ICE_ASSISTANT_QUESTIONS
@@ -2307,7 +2402,7 @@ export default function SpiritVeinGame() {
     setStats(buildStats(game))
     setAssistantQuestion('')
     setAssistantAnswer(ASSISTANT_IDLE_TEXT)
-    setAssistantStatus(assistantEndpoint ? 'DeepSeek API：已配置代理地址 / Proxy configured' : ASSISTANT_API_IDLE_TEXT)
+    setAssistantStatus(getAssistantApiStatus(assistantApiKey, assistantEndpoint))
     setPhase('playing')
   }
 
@@ -2318,7 +2413,7 @@ export default function SpiritVeinGame() {
     setStats(INITIAL_STATS)
     setAssistantQuestion('')
     setAssistantAnswer(ASSISTANT_IDLE_TEXT)
-    setAssistantStatus(assistantEndpoint ? 'DeepSeek API：已配置代理地址 / Proxy configured' : ASSISTANT_API_IDLE_TEXT)
+    setAssistantStatus(getAssistantApiStatus(assistantApiKey, assistantEndpoint))
   }
 
   function restartGame() {
@@ -2333,12 +2428,18 @@ export default function SpiritVeinGame() {
 
     setAssistantQuestion(trimmedQuestion)
     setAssistantBusy(true)
-    setAssistantStatus('DeepSeek API：请求中 / Requesting...')
+    setAssistantStatus(assistantApiKey.trim()
+      ? 'DeepSeek API：浏览器直连请求中 / Requesting with local key...'
+      : 'DeepSeek API：代理请求中 / Requesting through proxy...')
 
     try {
-      const answer = await requestDeepSeekAssistant(assistantEndpoint, trimmedQuestion, currentRole, stats)
+      const answer = assistantApiKey.trim()
+        ? await requestDeepSeekAssistantWithKey(assistantApiKey, trimmedQuestion, currentRole, stats)
+        : await requestDeepSeekAssistant(assistantEndpoint, trimmedQuestion, currentRole, stats)
       setAssistantAnswer(answer)
-      setAssistantStatus('DeepSeek API：真实接口已返回 / Real API response received')
+      setAssistantStatus(assistantApiKey.trim()
+        ? 'DeepSeek API：浏览器直连已返回 / Direct API response received'
+        : 'DeepSeek API：代理接口已返回 / Proxy API response received')
     } catch (error) {
       setAssistantAnswer(answerSkillQuestion(trimmedQuestion, currentRole, stats))
       setAssistantStatus(`${error.message}，已使用本地兜底回答 / Using local fallback`)
@@ -2355,7 +2456,17 @@ export default function SpiritVeinGame() {
   function updateAssistantEndpoint(endpoint) {
     setAssistantEndpoint(endpoint)
     saveAssistantEndpoint(endpoint)
-    setAssistantStatus(endpoint.trim() ? 'DeepSeek API：已配置代理地址 / Proxy configured' : ASSISTANT_API_IDLE_TEXT)
+    setAssistantStatus(getAssistantApiStatus(assistantApiKey, endpoint))
+  }
+
+  function updateAssistantApiKey(apiKey) {
+    setAssistantApiKey(apiKey)
+    saveAssistantApiKey(apiKey)
+    setAssistantStatus(getAssistantApiStatus(apiKey, assistantEndpoint))
+  }
+
+  function clearAssistantApiKey() {
+    updateAssistantApiKey('')
   }
 
   function syncStatsFromGame() {
@@ -2628,13 +2739,31 @@ export default function SpiritVeinGame() {
                   </button>
                 </form>
                 <details className="assistant-api-settings">
-                  <summary>DeepSeek API</summary>
-                  <input
-                    value={assistantEndpoint}
-                    onChange={event => updateAssistantEndpoint(event.target.value)}
-                    placeholder="代理地址 / Proxy endpoint, e.g. https://your-site.vercel.app/api/deepseek-skill-agent"
-                    aria-label="DeepSeek代理地址 / DeepSeek proxy endpoint"
-                  />
+                  <summary>DeepSeek API / Real API</summary>
+                  <div className="assistant-api-grid">
+                    <label>
+                      <span>本机 Key / Local Key</span>
+                      <input
+                        type="password"
+                        value={assistantApiKey}
+                        onChange={event => updateAssistantApiKey(event.target.value)}
+                        placeholder="sk-...（只保存在当前浏览器 / stored only in this browser）"
+                        aria-label="DeepSeek本机Key / DeepSeek local browser key"
+                      />
+                    </label>
+                    <button type="button" onClick={clearAssistantApiKey} disabled={!assistantApiKey.trim()}>
+                      清空 Key / Clear
+                    </button>
+                    <label>
+                      <span>代理地址 / Proxy</span>
+                      <input
+                        value={assistantEndpoint}
+                        onChange={event => updateAssistantEndpoint(event.target.value)}
+                        placeholder="https://your-site.vercel.app/api/deepseek-skill-agent"
+                        aria-label="DeepSeek代理地址 / DeepSeek proxy endpoint"
+                      />
+                    </label>
+                  </div>
                 </details>
                 <div className="assistant-quick">
                   {assistantQuestions.map(question => (

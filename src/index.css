@@ -523,7 +523,8 @@ nav {
 }
 
 .assistant-form button,
-.assistant-quick button {
+.assistant-quick button,
+.assistant-api-settings button {
   border: 0;
   border-radius: 8px;
   cursor: pointer;
@@ -538,7 +539,8 @@ nav {
 }
 
 .assistant-form button:disabled,
-.assistant-quick button:disabled {
+.assistant-quick button:disabled,
+.assistant-api-settings button:disabled {
   background: #cbd5e1;
   color: #64748b;
   cursor: wait;
@@ -557,6 +559,22 @@ nav {
   margin-bottom: 0.35rem;
 }
 
+.assistant-api-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.45rem;
+}
+
+.assistant-api-grid label {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.assistant-api-grid label:last-child {
+  grid-column: 1 / -1;
+}
+
 .assistant-api-settings input {
   width: 100%;
   border: 1px solid rgba(14, 116, 144, 0.22);
@@ -566,6 +584,15 @@ nav {
   color: #0f172a;
   font: inherit;
   font-size: 0.82rem;
+}
+
+.assistant-api-settings button {
+  align-self: end;
+  padding: 0.52rem 0.65rem;
+  background: #e0f2fe;
+  color: #075985;
+  font-size: 0.78rem;
+  white-space: nowrap;
 }
 
 .assistant-quick {
