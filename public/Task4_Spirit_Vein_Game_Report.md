@@ -108,7 +108,7 @@ The enemy waves become harder over time. This creates a survival curve: the firs
 | Styling | CSS |
 | Deployment Target | Static website / GitHub Pages-compatible build |
 | AI Development Partner | LLM-assisted planning, debugging, and iteration |
-| In-Game Assistant | Local rule-based skill Q&A agent |
+| In-Game Assistant | Local free-form skill Q&A agent |
 
 ## 6. AI-Assisted Development Process
 
@@ -158,14 +158,15 @@ This helped catch real issues such as a lint warning in enemy coordinate initial
 
 ### 6.5 Embedded Skill Assistant
 
-To satisfy the embedded agent bonus in a stable way, the game includes a lightweight in-game assistant named "器灵助手". The player can ask questions such as:
+To satisfy the embedded agent bonus in a stable way, the game includes a lightweight in-game assistant named "器灵助手". The player can type free-form questions or click quick prompts. Example questions include:
 
 1. "F怎么用?"
 2. "Q+E领域怎么放?"
 3. "怎么升阶?"
-4. "当前冷却状态怎么样?"
+4. "灵脉快没血了怎么办?"
+5. "被围住应该先放什么技能?"
 
-The assistant answers based on the selected character, current skill tiers, cooldown status, and upgrade points. It is implemented locally instead of exposing an API key in the public browser code. This keeps the GitHub Pages deployment safe and reliable while still demonstrating an AI-agent-style interaction inside the game.
+The assistant answers based on the selected character, current skill tiers, cooldown status, upgrade points, Spirit Vein HP, and player HP. It is implemented locally instead of exposing an API key in the public browser code. This keeps the GitHub Pages deployment safe and reliable while still demonstrating an AI-agent-style interaction inside the game.
 
 ## 7. Results
 
@@ -178,7 +179,7 @@ The current prototype includes:
 5. Four enemy types.
 6. Game-over and restart flow.
 7. Responsive layout that still works in a narrow browser panel.
-8. An embedded "器灵助手" panel for asking skill and upgrade questions.
+8. An embedded "器灵助手" panel for asking free-form skill, upgrade, and survival questions.
 
 The project can be run locally with:
 
@@ -194,7 +195,7 @@ npm run build
 
 ## 8. Current Limitations and Next Steps
 
-The current version focuses on a stable playable core and a local skill Q&A assistant. The assistant is intentionally limited to skill explanation, cooldown advice, and upgrade guidance, which makes it useful during a short classroom demonstration.
+The current version focuses on a stable playable core and a local skill Q&A assistant. The assistant is intentionally limited to skill explanation, cooldown advice, upgrade guidance, and simple survival strategy, which makes it useful during a short classroom demonstration.
 
 Planned next steps:
 
@@ -212,5 +213,5 @@ Planned next steps:
 | Technical Execution | React + Canvas playable prototype |
 | Documentation Quality | This report records design, process, results, and next steps |
 | Final Presentation | Game page can be opened and played during presentation |
-| Bonus: Embedded AI Agent | Implemented as a local skill Q&A assistant |
+| Bonus: Embedded AI Agent | Implemented as a local free-form skill Q&A assistant |
 | Bonus: Cross-platform Support | Static web app can run in modern browsers on multiple systems |

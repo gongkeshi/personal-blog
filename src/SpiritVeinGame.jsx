@@ -19,7 +19,7 @@ const INITIAL_SKILL_LEVELS = {
   qe: 1,
   space: 1,
 }
-const ASSISTANT_IDLE_TEXT = '我是器灵助手，可以问我技能键位、升阶、连招或当前冷却。'
+const ASSISTANT_IDLE_TEXT = '我是器灵助手，可以自由问技能、连招、升阶、保命、守灵脉和当前冷却。'
 const ICE_ASSISTANT_QUESTIONS = ['冰修怎么连招？', 'F怎么二段爆炸？', 'Q+E领域怎么放？', '怎么升阶？']
 const FIRE_ASSISTANT_QUESTIONS = ['火修怎么连招？', '大招怎么用？', 'R技能有什么用？', '怎么升阶？']
 const SKILL_DETAILS = {
@@ -220,6 +220,11 @@ function getRoleSkillText(role) {
   return `技能：${labels}${countText}，每 200 分获得 1 个升阶点，最高 3 阶`
 }
 
+function isTextEntryTarget(target) {
+  const tagName = target?.tagName?.toLowerCase()
+  return target?.isContentEditable || tagName === 'input' || tagName === 'textarea' || tagName === 'select'
+}
+
 function spentUpgradePoints(skillLevels) {
   return SKILL_KEYS.reduce((total, key) => total + ((skillLevels[key] || 1) - 1), 0)
 }
@@ -263,12 +268,45 @@ function answerSkillQuestion(question, role, stats) {
 
   const text = question.toLowerCase()
   const statusText = getSkillStatusText(role, stats)
+  const coreDanger = stats.coreHp <= 90
+  const playerDanger = stats.playerHp <= 45
+
+  if (text.includes('灵脉') || text.includes('守不住') || text.includes('快没血') || text.includes('危险') || text.includes('被围') || text.includes('围住')) {
+    if (role.id === 'bing') {
+      return `${coreDanger ? '灵脉血量已经危险，' : ''}冰修守底线优先用 Q+E 在灵脉前放冰魄领域，再用 F 全场冰封拖时间；敌人聚到一起时用 E 剑阵或空格天雷清掉。当前状态：${statusText}。`
+    }
+    return `${coreDanger ? '灵脉血量已经危险，' : ''}火修被压到底线时先开 R 护体炎星，接 E 光束扫直线，再用 Q 或空格蓄力火球炸敌人密集方向。当前状态：${statusText}。`
+  }
+
+  if (text.includes('没血') || text.includes('残血') || text.includes('保命') || text.includes('活不下去')) {
+    if (role.id === 'bing') {
+      return `${playerDanger ? '你现在血量偏低，' : ''}冰修保命靠控场：先 F 冰封争取走位，再 Q 减速追你的敌人，Q+E 留给灵脉前的压力波。`
+    }
+    return `${playerDanger ? '你现在血量偏低，' : ''}火修保命先开 R 环绕火球防贴脸，边退边用 E 光束扫开路线，别在蓄力大招时站太近。`
+  }
 
   if (text.includes('升阶') || text.includes('升级') || text.includes('200') || text.includes('3阶') || text.includes('三阶')) {
     return `每 200 分获得 1 个升阶点，技能最高 3 阶。3 阶效果会明显夸张：冰修有五重冰月、强领域、F二段引爆；火修有巨型火球和更强清场。当前可用升阶点：${stats.upgradePoints}。`
   }
 
+  if (text.includes('先升') || text.includes('优先') || text.includes('加点') || text.includes('哪个强') || text.includes('推荐')) {
+    if (role.id === 'bing') {
+      return '冰修推荐升阶顺序：先 Q 提高清怪和减速，再升 F 解锁更久冰封；如果主要守灵脉，就优先升 Q+E 领域，最后补 R 分身和空格天雷。'
+    }
+    return '火修推荐升阶顺序：先 Q 大火球提高爆发，再升 R 增强贴身防守；如果敌人排成直线很多，就先升 E 光束，后期再把空格大火球拉到3阶。'
+  }
+
+  if (text.includes('敌人') || text.includes('妖兽') || text.includes('心魔') || text.includes('魔修') || text.includes('天劫')) {
+    return '敌人会从上方和两侧进攻灵脉：妖兽是基础怪，心魔更快，魔修更肉，天劫残影血量很高。遇到快怪先减速或开护体，遇到肉怪用爆发技能集中清。'
+  }
+
   if (role.id === 'bing') {
+    if (text.includes('q') || text.includes('半月') || text.includes('冰波') || text.includes('减速')) {
+      return 'Q 半月霜波是冰修最常用的控场技能，放射半月形攻击波，命中会减速；升到3阶会变成多重冰月，适合先手拖住敌人。'
+    }
+    if (text.includes('e') || text.includes('万剑') || text.includes('剑阵') || text.includes('剑')) {
+      return 'E 万剑归宗会展开剑阵并向四周射出冰剑，适合敌人包围你或靠近灵脉时释放；现在剑数量更少但单剑更强，画面也更清楚。'
+    }
     if (text.includes('二段') || text.includes('爆') || text.includes('f')) {
       return 'F 是玄冰封界：直接冰封全场。升到 3 阶后，冰封期间再按一次 F，会只引爆被冻结的目标，不是全图爆炸。'
     }
@@ -277,6 +315,9 @@ function answerSkillQuestion(question, role, stats) {
     }
     if (text.includes('分身') || text.includes('r')) {
       return 'R 是冰影分身：分身会朝鼠标方向持续射击。升阶后分身更多、更久，3阶会形成弹幕压制。'
+    }
+    if (text.includes('大招') || text.includes('空格') || text.includes('space') || text.includes('天雷')) {
+      return '空格是九霄天雷，会全场落雷打击敌人，适合敌人很多但分散时使用；它不是持续冰场，冰场是 Q+E。'
     }
     if (text.includes('连招') || text.includes('怎么打') || text.includes('顺序')) {
       return '冰修推荐连招：Q减速开路，敌人聚集后Q+E放领域，R补弹幕，危险时F全场冰封；F到3阶后冰封期间再按F点爆冻结目标。'
@@ -287,6 +328,12 @@ function answerSkillQuestion(question, role, stats) {
     return `冰修技能：Q半月霜波减速，E万剑归宗清场，R冰影分身压制，F玄冰封界控场，Q+E冰魄领域守底线，空格九霄天雷全场打击。当前状态：${statusText}。`
   }
 
+  if (text.includes('q') || text.includes('火球') || text.includes('大火球')) {
+    return 'Q 是陨炎大火球，命中后爆炸溅射，适合炸敌人密集点；升阶后火球数量和爆炸范围都会提升。'
+  }
+  if (text.includes('e') || text.includes('光束') || text.includes('激光')) {
+    return 'E 是赤焰光束，适合清一条直线上的敌人。鼠标瞄准敌人来的方向再放，收益会比随手释放高。'
+  }
   if (text.includes('大招') || text.includes('空格') || text.includes('space')) {
     return '火修大招是焚天蓄炎：按空格蓄力 1 秒后，朝鼠标方向释放超大火球。最好先把鼠标瞄向敌人密集方向。'
   }
@@ -354,6 +401,7 @@ function createGame(role) {
     magmaJets: [],
     charges: [],
     lightnings: [],
+    swordAuras: [],
     iceExplosions: [],
     particles: [],
     attackCd: 0,
@@ -455,6 +503,9 @@ function fireProjectile(game, angle, options) {
     slowDuration: options.slowDuration || 0,
     slowFactor: options.slowFactor || 1,
     freezeDuration: options.freezeDuration || 0,
+    bladeLength: options.bladeLength || 0,
+    bladeWidth: options.bladeWidth || 0,
+    trailLength: options.trailLength || 0,
     hitEnemies: new Set(),
   })
 }
@@ -531,25 +582,42 @@ function castIceE(game) {
   if (!isSkillReady(game, 'e')) return
 
   const level = getSkillLevel(game, 'e')
-  const rings = level >= 3 ? 3 : level === 2 ? 2 : 1
-  const blades = level >= 3 ? 42 : level === 2 ? 26 : 18
+  const rings = level >= 3 ? 2 : level === 2 ? 2 : 1
+  const blades = level >= 3 ? 14 : level === 2 ? 10 : 8
+
+  if (!game.swordAuras) game.swordAuras = []
+  game.swordAuras.push({
+    x: game.player.x,
+    y: game.player.y,
+    radius: level >= 3 ? 138 : level === 2 ? 106 : 76,
+    life: 0.72,
+    maxLife: 0.72,
+    level,
+    bladeCount: rings * blades,
+    color: '#dbeafe',
+    phase: Math.random() * Math.PI * 2,
+  })
 
   for (let ring = 0; ring < rings; ring += 1) {
     const delayAngle = (ring * Math.PI) / blades
     for (let i = 0; i < blades; i += 1) {
       fireProjectile(game, (Math.PI * 2 * i) / blades + delayAngle, {
+        kind: 'sword',
         speed: 620 + ring * 90,
-        radius: level >= 3 ? 7 : 6,
-        damage: level >= 3 ? 52 : level === 2 ? 38 : 30,
-        life: level >= 3 ? 1.55 : 1.1,
+        radius: level >= 3 ? 13 : level === 2 ? 11 : 10,
+        damage: level >= 3 ? 78 : level === 2 ? 54 : 42,
+        life: level >= 3 ? 1.42 : level === 2 ? 1.26 : 1.05,
         color: ring % 2 === 0 ? '#bfdbfe' : '#e0f2fe',
         pierce: level >= 3 ? 5 : level === 2 ? 3 : 2,
+        bladeLength: level >= 3 ? 54 : level === 2 ? 46 : 38,
+        bladeWidth: level >= 3 ? 11 : 9,
+        trailLength: level >= 3 ? 42 : 34,
       })
     }
   }
 
   if (level >= 3) {
-    for (let i = 0; i < 12; i += 1) {
+    for (let i = 0; i < 6; i += 1) {
       addLightning(game, game.player.x, game.player.y, Math.random() * game.width, Math.random() * (game.height - 90), '#dbeafe')
     }
   }
@@ -1073,6 +1141,10 @@ function updateGame(game, dt) {
   game.orbitals = game.orbitals.filter(orbital => orbital.life > 0)
   game.magmaJets = game.magmaJets.filter(jet => jet.life > 0)
   game.charges = game.charges.filter(charge => !charge.released)
+  game.swordAuras = (game.swordAuras || []).filter(aura => {
+    aura.life -= dt
+    return aura.life > 0
+  })
   game.lightnings = game.lightnings.filter(lightning => {
     lightning.life -= dt
     return lightning.life > 0
@@ -1130,6 +1202,121 @@ function drawLightning(ctx, lightning) {
   }
   ctx.lineTo(lightning.x2, lightning.y2)
   ctx.stroke()
+  ctx.restore()
+}
+
+function drawSwordAura(ctx, aura, time) {
+  const alpha = clamp(aura.life / aura.maxLife, 0, 1)
+  const progress = 1 - alpha
+  const radius = aura.radius * (0.72 + progress * 0.3)
+  const rotation = time * (aura.level >= 3 ? 1.35 : 0.9) + aura.phase
+  const visibleBlades = aura.level >= 3 ? 14 : aura.level === 2 ? 10 : 8
+
+  ctx.save()
+  ctx.globalAlpha = alpha
+  ctx.shadowBlur = 22
+  ctx.shadowColor = '#bfdbfe'
+  ctx.strokeStyle = `rgba(219, 234, 254, ${0.72 * alpha})`
+  ctx.lineWidth = 3
+  ctx.beginPath()
+  ctx.arc(aura.x, aura.y, radius, 0, Math.PI * 2)
+  ctx.stroke()
+
+  ctx.strokeStyle = `rgba(125, 211, 252, ${0.42 * alpha})`
+  ctx.lineWidth = 1.5
+  ctx.beginPath()
+  ctx.arc(aura.x, aura.y, radius * 0.58, 0, Math.PI * 2)
+  ctx.stroke()
+
+  for (let i = 0; i < visibleBlades; i += 1) {
+    const angle = rotation + (Math.PI * 2 * i) / visibleBlades
+    const x = aura.x + Math.cos(angle) * radius * 0.84
+    const y = aura.y + Math.sin(angle) * radius * 0.84
+    const bladeLength = aura.level >= 3 ? 28 : 22
+    const bladeWidth = aura.level >= 3 ? 6 : 5
+
+    ctx.save()
+    ctx.translate(x, y)
+    ctx.rotate(angle + Math.PI / 2)
+    ctx.fillStyle = `rgba(224, 242, 254, ${0.88 * alpha})`
+    ctx.strokeStyle = `rgba(14, 165, 233, ${0.72 * alpha})`
+    ctx.lineWidth = 1.4
+    ctx.beginPath()
+    ctx.moveTo(0, -bladeLength)
+    ctx.lineTo(bladeWidth, bladeLength * 0.25)
+    ctx.lineTo(0, bladeLength * 0.46)
+    ctx.lineTo(-bladeWidth, bladeLength * 0.25)
+    ctx.closePath()
+    ctx.fill()
+    ctx.stroke()
+    ctx.restore()
+  }
+
+  for (let i = 0; i < 4; i += 1) {
+    const angle = -rotation * 0.65 + (Math.PI * 2 * i) / 4
+    ctx.strokeStyle = `rgba(240, 249, 255, ${0.42 * alpha})`
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.moveTo(aura.x + Math.cos(angle) * radius * 0.2, aura.y + Math.sin(angle) * radius * 0.2)
+    ctx.lineTo(aura.x + Math.cos(angle) * radius * 0.96, aura.y + Math.sin(angle) * radius * 0.96)
+    ctx.stroke()
+  }
+
+  ctx.restore()
+}
+
+function drawSwordProjectile(ctx, projectile) {
+  const alpha = clamp(projectile.life / projectile.maxLife, 0, 1)
+  const length = projectile.bladeLength || 42
+  const width = projectile.bladeWidth || 9
+  const trail = projectile.trailLength || 34
+
+  ctx.save()
+  ctx.translate(projectile.x, projectile.y)
+  ctx.rotate(projectile.angle)
+  ctx.globalAlpha = 0.58 + alpha * 0.36
+  ctx.shadowBlur = 18
+  ctx.shadowColor = projectile.color
+
+  const trailGradient = ctx.createLinearGradient(-trail, 0, length * 0.25, 0)
+  trailGradient.addColorStop(0, 'rgba(186, 230, 253, 0)')
+  trailGradient.addColorStop(1, `rgba(186, 230, 253, ${0.38 * alpha})`)
+  ctx.fillStyle = trailGradient
+  ctx.beginPath()
+  ctx.moveTo(-trail, -width * 0.46)
+  ctx.lineTo(length * 0.18, -width * 0.3)
+  ctx.lineTo(length * 0.18, width * 0.3)
+  ctx.lineTo(-trail, width * 0.46)
+  ctx.closePath()
+  ctx.fill()
+
+  const bladeGradient = ctx.createLinearGradient(-length * 0.32, 0, length * 0.58, 0)
+  bladeGradient.addColorStop(0, '#60a5fa')
+  bladeGradient.addColorStop(0.46, '#e0f2fe')
+  bladeGradient.addColorStop(1, '#f8fafc')
+
+  ctx.fillStyle = bladeGradient
+  ctx.strokeStyle = '#bfdbfe'
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.moveTo(length * 0.58, 0)
+  ctx.lineTo(-length * 0.18, width)
+  ctx.lineTo(-length * 0.34, width * 0.28)
+  ctx.lineTo(-length * 0.34, -width * 0.28)
+  ctx.lineTo(-length * 0.18, -width)
+  ctx.closePath()
+  ctx.fill()
+  ctx.stroke()
+
+  ctx.strokeStyle = 'rgba(15, 23, 42, 0.28)'
+  ctx.lineWidth = 1.2
+  ctx.beginPath()
+  ctx.moveTo(-length * 0.24, 0)
+  ctx.lineTo(length * 0.44, 0)
+  ctx.stroke()
+
+  ctx.fillStyle = '#38bdf8'
+  ctx.fillRect(-length * 0.34, -width * 1.18, 4, width * 2.36)
   ctx.restore()
 }
 
@@ -1347,6 +1534,10 @@ function drawGame(ctx, game) {
     ctx.fillRect(0, 0, game.width, game.height)
   }
 
+  for (const aura of game.swordAuras || []) {
+    drawSwordAura(ctx, aura, game.time)
+  }
+
   for (const zone of game.zones) {
     const alpha = clamp(zone.life / zone.maxLife, 0, 1)
     const isFrostZone = zone.kind === 'frost'
@@ -1491,6 +1682,8 @@ function drawGame(ctx, game) {
       ctx.arc(0, 0, projectile.radius + 10, -0.78, 0.78)
       ctx.stroke()
       ctx.restore()
+    } else if (projectile.kind === 'sword') {
+      drawSwordProjectile(ctx, projectile)
     } else if (projectile.kind === 'fireball' || projectile.kind === 'ultimateFireball') {
       const alpha = clamp(projectile.life / projectile.maxLife, 0, 1)
       ctx.save()
@@ -1783,6 +1976,8 @@ export default function SpiritVeinGame() {
     let lastFrame = 0
 
     function handleKeyDown(event) {
+      if (isTextEntryTarget(event.target)) return
+
       const key = event.key.toLowerCase()
       const controlledKeys = ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ', 'q', 'e', 'r', 'f']
       if (controlledKeys.includes(key)) {
@@ -1812,6 +2007,7 @@ export default function SpiritVeinGame() {
     }
 
     function handleKeyUp(event) {
+      if (isTextEntryTarget(event.target)) return
       game.keys.delete(event.key.toLowerCase())
     }
 
@@ -1951,7 +2147,7 @@ export default function SpiritVeinGame() {
                   <input
                     value={assistantQuestion}
                     onChange={event => setAssistantQuestion(event.target.value)}
-                    placeholder="问：F怎么用？Q+E怎么放？怎么升阶？"
+                    placeholder="随便问：被围住怎么办？先升哪个？E怎么用？"
                     aria-label="向器灵助手询问技能"
                   />
                   <button type="submit">询问</button>
